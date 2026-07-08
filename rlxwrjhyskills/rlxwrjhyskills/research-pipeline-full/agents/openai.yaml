@@ -1,0 +1,7 @@
+interface:
+  display_name: "Research Pipeline Full"
+  short_description: "Full research orchestration with startup routing, explicit checkpoints, progress audits, and multi-window execution scaffolds."
+  default_prompt: "Use $research-pipeline-full to route this research project into the right full-program posture, audit existing evidence, manage checkpoints, and build a validation-ready multi-window research system."
+
+policy:
+  allow_implicit_invocation: true
