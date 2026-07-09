@@ -1,7 +1,0 @@
-interface:
-  display_name: "Research Pipeline Lite"
-  short_description: "Fast research intake with explicit checkpointing, progress audits, and escalation into the full research pipeline."
-  default_prompt: "Use $research-pipeline-lite to turn this research pile into a clean shortlist, evidence table, scored decision packet, and explicit next-step choice."
-
-policy:
-  allow_implicit_invocation: true

@@ -1,7 +1,0 @@
-interface:
-  display_name: "Research Skill Hub"
-  short_description: "Discover and route between local research skills."
-  default_prompt: "Use $research-skill-hub to inspect the available local research skills, explain their roles, and generate a direct prompt into the selected one."
-
-policy:
-  allow_implicit_invocation: true
