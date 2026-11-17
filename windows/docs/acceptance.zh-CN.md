@@ -96,7 +96,7 @@
   静态资源 → 200，`GET /api/health` → `{"status":"ok"}`。
 - 随包发布的 `opendirector_app.py` 能启动该服务、校验健康状态并干净停止，走的是与
   Windows 包完全相同的代码路径。
-- 25/25 自动化测试全部通过（`windows/tests/test_launcher.py`），其中包含 5 次真实
+- 29/29 自动化测试全部通过（`windows/tests/test_launcher.py`），其中包含 5 次真实
   子进程端到端运行：启动 → 校验 → 干净停止；端口冲突（退出码 3）；依赖缺失（退出码 4，
   并指明缺失的包）；守护超时；`--check` 报告。
 - 以下 Windows 专属部分**无法在此环境执行**，发布前需在真实 Windows 机器上确认：

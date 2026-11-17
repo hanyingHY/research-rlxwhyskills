@@ -103,7 +103,7 @@ Verified in the development sandbox (Linux, Python 3.11, upstream `main` at 0.1.
   `GET /api/health` → `{"status":"ok"}`.
 - The shipped `opendirector_app.py` starts that service, verifies it, and stops it
   cleanly, using the same code path the Windows package uses.
-- 25/25 automated tests (`windows/tests/test_launcher.py`), including five end-to-end
+- 29/29 automated tests (`windows/tests/test_launcher.py`), including five end-to-end
   subprocess runs: start → verify → clean stop; port conflict (exit 3); missing
   dependency (exit 4, names the package); supervision timeout; `--check` report.
 - The Windows-only parts that **cannot** run here and must be confirmed on a real
