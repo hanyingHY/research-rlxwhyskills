@@ -50,6 +50,19 @@ node scripts/verify-runtime.mjs --runtime runtime/dist/linux-x64 --data /tmp/od-
 ## Where this should live upstream
 
 Move `host_entry.py` to `apps/api/src/opendirector_api/desktop.py`, expose it as
-`opendirector desktop --port 0`, and cover it with the repository's Python suite:
+`opendirector desktop-serve --port 0`, and cover it with the repository's Python suite:
 startup failure, 401 without a token, status JSON, and graceful shutdown. Keep
 `opendirector serve` unchanged for browser users.
+
+### Wrapper architecture & upstream interface gaps
+
+1. **Port allocation**: uses pre-bound OS socket (`socket.bind(("127.0.0.1", 0))`) passed directly to Uvicorn, avoiding race conditions and log scraping.
+2. **Pure ASGI auth (`DesktopAuth`)**: deliberately avoids `BaseHTTPMiddleware` to preserve HTTP client disconnect events needed for inference cancellation.
+3. **In-flight counting (`InFlight`)**: tracks active streaming and standard requests.
+4. **Stdio control protocol**: outputs `@@OPENDIRECTOR@@` JSON frames to stdout while routing server logs to stderr.
+5. **Stdin EOF cleanup**: terminates Uvicorn when parent process closes stdin pipe, preventing orphaned lock-holding backend instances.
+6. **Task state & `notExposed`**:
+   - Currently `/api/desktop/status` returns active tool tasks and reports `"notExposed": ["agentTurns", "generationJobs"]`.
+   - Landing upstream allows direct in-process status calls rather than loopback `httpx` requests.
+   - Upstream needs to expose `creation_generation.active_jobs()` and `agent_runtimes.active_turns()` to achieve full task awareness before quit.
+

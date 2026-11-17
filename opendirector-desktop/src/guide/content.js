@@ -374,6 +374,14 @@ export const HELP_SECTIONS = [
         ),
         keywords: "instance lock 单实例 锁 安全",
       },
+      {
+        title: pair("开源许可与第三方声明", "Licenses and third-party notices"),
+        body: pair(
+          "OpenDirector 核心遵循 Apache 2.0 协议；内置多媒体工具 FFmpeg（含 libx264）遵循 GPL 协议，通过独立子进程调用；Noto Sans 字体遵循 SIL OFL 协议；mediabunny 遵循 MPL 2.0 协议。所有声明在源码 LICENSE 与 NOTICE 文件中完整提供。",
+          "OpenDirector core is licensed under Apache 2.0. Bundled FFmpeg with libx264 is under GPL and invoked as an independent subprocess; Noto Sans font is under SIL OFL; mediabunny is under MPL 2.0. Full declarations are provided in the LICENSE and NOTICE files.",
+        ),
+        keywords: "license notice gpl ffmpeg apache mpl ofl 许可证 版权 声明 第三方",
+      },
     ],
   },
   {

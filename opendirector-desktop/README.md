@@ -129,7 +129,9 @@ git tag v0.1.4 && git push origin v0.1.4      # 版本必须与 package.json 相
   （未签名版本请手动下载新包）。在仓库 secrets 里配置 `CSC_LINK`、`CSC_KEY_PASSWORD`、
   `APPLE_ID` 等即可让 electron-builder 走签名流程。
 - FFmpeg 使用 libx264（GPL）构建，随包分发需遵守 GPL；介意的发行版可换成 LGPL 构建，
-  但 MP4/H.264 导出能力会受影响。许可证文本应随安装包分发。
+  但 MP4/H.264 导出能力会受影响。许可证文本随安装包分发；客户端通过独立子进程命令行调用以保持架构隔离。
+- 第三方组件（Noto Sans 字体 SIL OFL、mediabunny MPL-2.0、OpenCode 与前端依赖）均在源码 `NOTICE`
+  完整声明，并在桌面端主菜单「关于」及 F1 帮助中心「开源许可与第三方声明」中直接可查阅（详见 [`docs/06-desktop-product.md`](docs/06-desktop-product.md) §10）。
 - Linux 自动更新只支持 AppImage；deb/rpm 用户会看到「请下载新安装包」的提示。
 
 ## 数据位置

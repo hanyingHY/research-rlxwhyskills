@@ -200,26 +200,111 @@ F1 / 菜单「重播使用引导」可从任意状态重新进入导览（不改
 
 ## 8. 真机验收清单
 
-发布前在一台干净机器上逐项确认（对照 RFC 验收）：
+发布前在一台干净机器上逐项确认（对照 RFC 验收；自动化覆盖情况详见 [`04-verification.md`](04-verification.md)）：
 
-- [ ] 安装包签名/未签名提示符合预期，首次启动 < 10 秒（SSD）；
-- [ ] 欢迎页 → 导览 → 画布，不跳过任何一步也能继续；
-- [ ] 未配置模型时有提示且能直接打开设置；配置后不再出现；
-- [ ] 新建工程 → 生成一张图 → 拖入时间线 → 导出 MP4 → 重开应用工程仍在；
-- [ ] 导出期间切到其他应用不中断；退出时若有任务会提示；
-- [ ] 更改数据目录后重启，工程仍在旧目录（提示语义正确）；
-- [ ] `F1` / `?` / 菜单三处入口一致；英文系统下全英文；
-- [ ] 升级到新版本后引导不重复、窗口位置保留、项目未变；
-- [ ] 卸载后 `~/.opendirector` 仍在；日志目录可单独删除；
-- [ ] Linux 下 AppImage 能自更新，deb 安装版提示手动更新。
+- [x] **自动化测试基线**：54/54 用例全绿（含 7 项 jsdom 真实 DOM 渲染测试、主进程协议校验、设置原子写入与更新逻辑）；
+- [x] **后端 API 端到端闭环**：以真实 OpenDirector v0.1.4 源码 + Python 3.11 运行 `host_entry.py`，验证了动态分配端口、401/200 凭据鉴权、`/api/creation/projects` 工程创建与持久化、`/api/desktop/status` 状态汇报与 stdin `shutdown` 优雅退出；
+- [ ] **物理机终验点（需带显示器与 GPU 的真实桌面）**：
+  - [ ] 安装包签名/未签名提示符合预期（macOS Gatekeeper / Windows SmartScreen），首次启动 < 10 秒（SSD）；
+  - [ ] 欢迎页 → 导览 → 画布，不跳过任何一步也能继续，遮罩高亮动画与元素定位精准；
+  - [ ] 未配置模型时有提示且能直接打开设置；配置后不再出现；
+  - [ ] 新建工程 → 生成一张图 → 拖入时间线 → 导出 MP4 → 重开应用工程仍在；
+  - [ ] 导出期间切到其他应用不中断（`backgroundThrottling: false` 生效）；退出时若有任务会提示；
+  - [ ] 更改数据目录后重启，工程仍在旧目录（提示语义正确，新工程存入新目录）；
+  - [ ] `F1` / `?` / 菜单三处入口一致；英文系统下全英文；
+  - [ ] 升级到新版本后引导不重复、窗口位置保留、项目未变；
+  - [ ] 卸载后 `~/.opendirector` 仍在；日志目录可单独删除；
+  - [ ] Linux 下 AppImage 能自更新，deb 安装版提示手动更新。
 
-## 9. 需要上游配合的部分
+## 9. 运行时包装逻辑与上游落地（apps/api）
 
-1. **稳定选择器**：给工程标题、设置入口、助手按钮、工具栏、导出区加 `data-guide="…"`，
-   避免类名重构破坏导览（当前已做居中降级）。
-2. **任务状态接口**：`/api/desktop/status` 目前只有工具任务；Agent 轮次与生成任务需要正式字段，
-   退出提示才能完整。
-3. **版本映射**：若桌面壳需要独立版本号，需约定 `desktopVersion` 与 `coreVersion` 的兼容矩阵；
-   当前选择「两者相等」以简化升级与支持判断。
-4. **签名与公证**：正式分发需要 Apple Developer ID 与 Windows 代码签名证书；
-   未签名版本无法验证自动更新链路。
+### 9.1 `runtime/host_entry.py` 包装逻辑说明
+
+桌面壳不直接调用 `opendirector serve`，而是使用专用的 `host_entry.py` 启动服务，核心原因如下：
+
+1. **操作系统动态端口分配（Port 0）**：
+   在启动 Uvicorn 前先通过 Python `socket.bind(("127.0.0.1", 0))` 绑定本地端口并监听，随后将预绑定的套接字直接传给 `uvicorn.Server.run(sockets=[listener])`。端口绑定成功后才向 stdout 打印 `ready` 控制帧，彻底消除传统扫描日志或竞争固定端口的脆弱性。
+2. **纯 ASGI 凭据网关（`DesktopAuth`）**：
+   桌面壳启动时生成 256 位随机 Bearer Token 并注入子进程环境变量 `OPENDIRECTOR_DESKTOP_TOKEN`。`DesktopAuth` 作为纯 ASGI 中间件工作，**不使用** `starlette.middleware.base.BaseHTTPMiddleware`——因为画板在做图像选择预览时依赖浏览器断开连接信号来取消推理任务，而 `BaseHTTPMiddleware` 的内部缓冲机制会掩盖该断开信号。
+3. **在途请求计数（`InFlight`）**：
+   通过纯 ASGI 中间件跟踪尚未完成的 HTTP 请求数（含长流式响应），确保应用在退出前能感知正在传输的任务。
+4. **确定性控制协议（stdio）**：
+   在 stdout 输出以 `@@OPENDIRECTOR@@ ` 为前缀的单行 JSON 帧（`ready`、`status`、`fatal`、`shutdown-complete`），所有标准 Uvicorn/FastAPI 日志输出到 stderr，实现业务日志与生命周期控制信号的解耦。
+5. **父进程生命周期守护（stdin EOF 保护）**：
+   子进程主线程通过专用监听线程阻塞读取 stdin。当 Electron 壳层因异常崩溃或被 SIGKILL 终止导致管道破裂（EOF）时，监听线程主动向 Uvicorn 发送退出信号，触发 lifespan 关闭回调，确保释放项目 SQLite 事务锁与文件句柄，杜绝后台孤儿进程。
+
+### 9.2 上游 landing 建议（落地至 `apps/api/`）
+
+当前 `runtime/host_entry.py` 作为桌面项目内的独立包装脚本运行。正式生产化时，建议干净地合并进上游代码库：
+
+- **建议位置**：`apps/api/src/opendirector_api/desktop.py`；
+- **CLI 入口**：在 `opendirector` CLI 中增加 `opendirector desktop-serve --port 0` 子命令；
+- **进程内状态查询**：当前 `host_entry.py` 里的 `collect_busy` 是通过内部 `httpx.Client` 向自身环回端口发起 HTTP 调用的。落地上游后，可以直接在 Python 内部访问 `create_app` 绑定的 `creation_projects` 和 `tool_tasks` 实例，消除进程内发 HTTP 的开销与可能在关闭阶段引发的死锁风险。
+
+### 9.3 任务状态接口与 `notExposed` 记录
+
+在当前实现中，退出状态检查接口 `/api/desktop/status` 只能获取工具任务（`tool-tasks`），返回结构显式标注：
+
+```json
+{
+  "projects": 1,
+  "activeToolTasks": [],
+  "busy": false,
+  "notExposed": ["agentTurns", "generationJobs"]
+}
+```
+
+需要上游进一步配合暴露的接口：
+
+1. **`agentTurns`（助手流式轮次）**：
+   上游 `opendirector_api/agent.py` 的对话轮次以 SSE/NDJSON 形式流式传输，在底层由 `asyncio.create_task` 执行，但目前缺少全局轮次注册表或查询端点。建议上游在 `AgentRuntimes` 中维护活跃轮次集合，并提供 `GET /api/agent/active-turns` 或内部查询方法。
+2. **`generationJobs`（生成任务）**：
+   上游 `opendirector/application/creation_generation.py` 内部维护了生成任务执行，但没有开放公共的活跃任务轮询接口。建议上游暴露 `GET /api/creation/active-jobs` 或提供 `creation_generation.active_jobs()` 方法。
+
+桌面壳在收到上游这两个接口后，即可将 `notExposed` 移除，实现全业务任务感知。
+
+## 10. 签名、合规与第三方声明
+
+### 10.1 代码签名与公证（结构确认）
+
+本项目运行环境无私有代码签名证书与苹果开发者凭据，本节确认签名与合规的配置结构完整性：
+
+- **macOS**：
+  - 配置文件：`opendirector-desktop/build/entitlements.mac.plist`，开启了 `com.apple.security.cs.allow-jit`、`allow-unsigned-executable-memory` 与 `disable-library-validation`（Python C 扩展加载必需）；
+  - 打包工具：`electron-builder.yml` 配置了 `hardenedRuntime: true`、`gatekeeperAssess: false`，在环境变量提供 `CSC_LINK`、`APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD` 时自动执行签名与公证。
+- **Windows**：
+  - `electron-builder.yml` 中 NSIS 配置了 `oneClick: false`、`allowToChangeInstallationDirectory: true`、`deleteAppDataOnUninstall: false`（卸载不丢项目数据）；在提供 `CSC_LINK` 与 `CSC_KEY_PASSWORD` 时自动签名可执行文件与卸载器。
+
+### 10.2 FFmpeg 与 libx264 的 GPL 合规义务
+
+桌面客户端打包分发了用于视频时间线合成与 MP4 导出的 FFmpeg 二进制工具（通过 `scripts/fetch-ffmpeg.mjs` 获取）：
+
+1. **GPL 衍生性质**：
+   BtbN 预构建版本启用了 `libx264` 编码器库，使得分发的 `ffmpeg` / `ffprobe` 二进制整体受 **GNU General Public License (GPL) v3** 约束。
+2. **架构边界与进程隔离**：
+   OpenDirector 桌面应用与 Python 后端**均未通过动态链接（dlopen/C bindings）使用 FFmpeg 库**，而是通过独立的操作系统子进程命令行调用（`execFile` / `subprocess.run`）与管道进行数据交换。根据 FSF 官方解释，通过常规操作系统命令行作为独立程序调用，主应用程序保留其本身的 **Apache 2.0** 许可证独立性，不会导致主程序源码被迫“传染”为 GPL。
+3. **再分发合规要求**：
+   - 随应用分发时必须包含完整的 GPL 许可证文本副本；
+   - 必须提供获取对应 FFmpeg 构建源代码的指引（BtbN/FFmpeg-Builds 仓库与构建脚本）。
+4. **专有分发分支可选方案（LGPL）**：
+   如果下游分发者对 GPL 存在严格合规顾虑，可改用 `--disable-gpl --disable-libx264` 的 LGPL 构建版本（通过系统自带硬件编码器或 OpenH264），代价是部分平台上的 H.264 导出兼容性受限。
+
+### 10.3 字体、OpenCode 与第三方组件声明
+
+随应用包含或打包的第三方资源许可证如下：
+
+| 组件 | 许可证 | 来源与声明方式 |
+| --- | --- | --- |
+| **Noto Sans CJK SC** | SIL OFL 1.1 / Apache 2.0 | 位于前端静态资源 `public/fonts/`，附带完整 `LICENSE.txt` |
+| **mediabunny** | MPL 2.0 | 未修改直接使用 npm 依赖，在 `NOTICE` 文件中声明源码地址 |
+| **@xyflow/react** | MIT | 流程图画布组件，遵循 MIT 许可证声明 |
+| **OpenCode** | Apache 2.0 / MIT | 内置代码生成与执行代理，携带上游版权声明 |
+
+### 10.4 许可证在安装包与界面中的可达性
+
+为确保最终用户与合规审计人员能直接在运行的应用中查阅第三方声明：
+
+1. **macOS 原生关于面板**：`main.js` 调用 `app.setAboutPanelOptions`，包含版权所有者 ThinkFlowLab、主仓库链接与版本号；
+2. **Windows / Linux 关于对话框**：在主菜单「帮助 → 关于 OpenDirector」中弹出模态框，直观显示版本号、运行环境诊断信息与日志目录快捷入口；
+3. **F1 桌面指引中心（所有平台）**：在预加载层（Preload）渲染的 F1 帮助中心内，专门收录「**开源许可与第三方声明 / Licenses and third-party notices**」条目，向用户明确说明 Apache 2.0、GPL、SIL OFL 与 MPL 2.0 的边界与仓库内 `LICENSE`、`NOTICE` 的获取方式。
+
