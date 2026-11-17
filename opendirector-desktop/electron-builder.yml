@@ -1,0 +1,59 @@
+appId: com.thinkflowlab.opendirector
+productName: OpenDirector
+copyright: Copyright © ThinkFlowLab
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - src/**
+  - package.json
+  - "!**/*.map"
+
+# Per-target payload from scripts/prepare-runtime.mjs.
+# ${os} is mac|win|linux; ${arch} is x64|arm64.
+extraResources:
+  - from: runtime/dist/${os}-${arch}
+    to: runtime
+
+asar: true
+npmRebuild: false
+
+mac:
+  category: public.app-category.video
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  # Projects live outside the install directory; never delete them silently.
+  deleteAppDataOnUninstall: false
+
+linux:
+  category: AudioVideo
+  maintainer: ThinkFlowLab
+  target:
+    - target: AppImage
+      arch: [x64, arm64]
+    - target: deb
+      arch: [x64, arm64]
+    - target: rpm
+      arch: [x64, arm64]
+
+# Enable when D5 (#367) defines hosting and channels.
+publish: null

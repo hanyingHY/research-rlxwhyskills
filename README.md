@@ -167,3 +167,17 @@ Choose it for factors, signals, strategies, backtests, temporal datasets, portfo
 Yes. Say what outcome must be preserved, authorize the rebuild scope, and require a rollback path before irreversible deletion.
 
 可以。说明必须保留的目标，授权重建范围，并要求在不可逆删除前保留回退路径。
+
+## 9. Project study: OpenDirector desktop / 项目研究：OpenDirector 桌面化
+
+An analysis of [ThinkFlowLab/OpenDirector](https://github.com/ThinkFlowLab/OpenDirector)
+and RFC [#362](https://github.com/ThinkFlowLab/OpenDirector/issues/362), with a runnable
+Electron + Python baseline for the D1 desktop shell.
+
+对 OpenDirector 及 RFC #362 的分析，以及可运行的 Electron + Python 桌面壳基线（D1）：
+
+- [Index / 总览](opendirector-desktop/README.md)
+- [Project analysis / 项目分析](opendirector-desktop/docs/01-project-analysis.md)
+- [Issue #362 assessment / 任务判断](opendirector-desktop/docs/02-issue-362-assessment.md)
+- [Baseline design / 基线设计](opendirector-desktop/docs/03-baseline-design.md)
+- [Verification / 验证记录](opendirector-desktop/docs/04-verification.md)

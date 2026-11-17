@@ -1,0 +1,26 @@
+{
+  "name": "opendirector-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron shell prototype for the OpenDirector local workspace (RFC #362 / D1 #363)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/main.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/auth.test.mjs tests/config.test.mjs tests/host.test.mjs tests/protocol.test.mjs",
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
+    "verify:runtime": "node scripts/verify-runtime.mjs",
+    "pack:dir": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "author": "ThinkFlowLab",
+  "homepage": "https://github.com/ThinkFlowLab/OpenDirector"
+}

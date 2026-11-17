@@ -1,0 +1,51 @@
+# Copy to .github/workflows/desktop-tests.yml when this prototype becomes a
+# workspace package. It verifies the shell contract on all three hosts without
+# Electron or a graphical session.
+name: Desktop shell contract
+
+on:
+  pull_request:
+    paths:
+      - "opendirector-desktop/**"
+  push:
+    branches: [main]
+    paths:
+      - "opendirector-desktop/**"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: ${{ matrix.os }} / node ${{ matrix.node }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-14]
+        node: ["22", "24"]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: opendirector-desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Show interpreters
+        run: |
+          node --version
+          python --version
+      - name: Lifecycle, protocol and path tests
+        run: npm test
+        env:
+          # Windows runners expose the interpreter as `python`.
+          OPENDIRECTOR_TEST_PYTHON: python
+      - name: Syntax check of the Electron entry points
+        run: |
+          node --check src/main.js
+          node --check src/window.js
+          node --check src/preload.cjs
