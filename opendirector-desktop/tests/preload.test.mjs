@@ -33,7 +33,7 @@ test("bundle ships both languages and the guide entry points", (t) => {
     "Welcome to OpenDirector Desktop",
     "opendirector-guide-root",
     "od:guide-state",
-    "od-window=main",
+    "--od-window=",
   ]) {
     assert.ok(source.includes(needle), `bundle is missing ${needle}`);
   }

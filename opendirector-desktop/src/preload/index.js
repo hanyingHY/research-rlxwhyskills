@@ -11,12 +11,23 @@ const { pickLocale } = require("../guide/plan.js");
 
 const invoke = (channel, payload) => ipcRenderer.invoke(channel, payload);
 // Guidance belongs to the primary window only. Popups share the bridge (and the
-// sandbox) but must not duplicate the welcome screen or the tour.
-const IS_PRIMARY_WINDOW = (process.argv ?? []).includes("--od-window=main");
+// sandbox) but must not duplicate the welcome screen or the tour. The marker is
+// additive: if argv is unavailable, the guide still mounts, and main-process
+// IPC trust checks remain the real guard against untrusted frames.
+function windowRole() {
+  try {
+    const marker = (process.argv ?? []).find((argument) => argument.startsWith("--od-window="));
+    return marker ? marker.slice("--od-window=".length) : "main";
+  } catch {
+    return "main";
+  }
+}
+
+const IS_PRIMARY_WINDOW = windowRole() !== "popup";
 
 const bridge = {
   platform: process.platform,
-  appVersion: process.env.npm_package_version ?? null,
+  appVersion: null,
   guide: {
     getState: () => invoke("od:guide-state"),
     updateSettings: (patch) => invoke("od:guide-settings", patch),

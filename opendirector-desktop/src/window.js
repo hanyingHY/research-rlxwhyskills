@@ -94,6 +94,8 @@ export function hardenContents(contents, { appOrigin, shell, preloadPath }) {
             nodeIntegration: false,
             webviewTag: false,
             backgroundThrottling: false,
+            // Popups get the bridge but never the welcome screen or the tour.
+            additionalArguments: ["--od-window=popup"],
           },
         },
       };
