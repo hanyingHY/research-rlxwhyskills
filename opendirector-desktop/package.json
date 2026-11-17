@@ -1,8 +1,9 @@
 {
   "name": "opendirector-desktop",
-  "version": "0.1.0",
+  "productName": "OpenDirector",
+  "version": "0.1.4",
   "private": true,
-  "description": "Electron shell prototype for the OpenDirector local workspace (RFC #362 / D1 #363)",
+  "description": "OpenDirector desktop application: the full local creation canvas with a bundled runtime",
   "license": "Apache-2.0",
   "type": "module",
   "main": "src/main.js",
@@ -10,16 +11,30 @@
     "node": ">=22"
   },
   "scripts": {
-    "start": "electron .",
-    "test": "node --test tests/auth.test.mjs tests/config.test.mjs tests/host.test.mjs tests/protocol.test.mjs",
+    "build:preload": "node scripts/build-preload.mjs",
+    "start": "npm run build:preload && electron .",
+    "dev": "npm run build:preload && OD_DEV=1 electron .",
+    "test": "node --test tests/auth.test.mjs tests/config.test.mjs tests/host.test.mjs tests/protocol.test.mjs tests/settings.test.mjs tests/updater.test.mjs tests/guide.test.mjs tests/render.test.mjs tests/preload.test.mjs",
+    "prepare:source": "node scripts/prepare-source.mjs",
     "prepare:runtime": "node scripts/prepare-runtime.mjs",
+    "fetch:python": "node scripts/fetch-python.mjs",
+    "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
     "verify:runtime": "node scripts/verify-runtime.mjs",
-    "pack:dir": "electron-builder --dir",
-    "dist": "electron-builder"
+    "pack:dir": "npm run build:preload && electron-builder --dir",
+    "dist": "npm run build:preload && electron-builder",
+    "dist:win": "npm run build:preload && electron-builder --win",
+    "dist:mac": "npm run build:preload && electron-builder --mac",
+    "dist:linux": "npm run build:preload && electron-builder --linux",
+    "release": "npm run build:preload && electron-builder --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   },
   "devDependencies": {
-    "electron": "^44.0.0",
-    "electron-builder": "^26.0.0"
+    "electron": "^44.11.3",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.28.0",
+    "jsdom": "^27.0.0"
   },
   "author": "ThinkFlowLab",
   "homepage": "https://github.com/ThinkFlowLab/OpenDirector"

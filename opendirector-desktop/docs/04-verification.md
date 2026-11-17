@@ -137,3 +137,24 @@ node scripts/verify-runtime.mjs --runtime runtime/dist/linux-x64 --data /tmp/od-
 npm install
 npm start
 ```
+
+
+## 阶段二更新（桌面产品化）
+
+产品化之后测试与验证范围扩大，以下结果取代本文早先的 25/25：
+
+```
+npm test                     54/54 通过
+  · auth/config/host/protocol  25（阶段一）
+  · settings                    6（设置校验、原子写、损坏恢复、原型污染）
+  · guide                       9（导览/提示/帮助搜索/诊断/双语）
+  · render                      7（jsdom 真实渲染：欢迎页、导览、Esc、跳过、提示、帮助、语言切换）
+  · updater                     5（更新能力判定、通道 URL、错误翻译）
+  · preload                     2（产物只 require("electron")、双语与入口齐全）
+node scripts/build-preload.mjs   dist/preload.cjs 57 KiB
+node scripts/verify-runtime.mjs  PASS dynamic port, token, health, status, graceful shutdown
+```
+
+仍未覆盖（与阶段一相同）：Electron 图形会话、安装包、真实 WebCodecs 导出、
+macOS/Windows 安装体验、签名与自动更新升级链路。发布前请按
+[`06-desktop-product.md`](06-desktop-product.md) §8 的真机清单验收。

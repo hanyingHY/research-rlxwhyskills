@@ -62,6 +62,7 @@ export function resolvePaths({
   home = "",
   repoRoot = "",
   env = {},
+  dataRootOverride = null,
   exists = existsSync,
 } = {}) {
   const p = pathApi(platform);
@@ -87,7 +88,7 @@ export function resolvePaths({
         : [p.join(repoRoot, "packages/core/src"), p.join(repoRoot, "apps/api/src")].join(
             p.delimiter,
           )),
-    dataRoot: env.OPENDIRECTOR_ROOT || p.join(home, ".opendirector"),
+    dataRoot: env.OPENDIRECTOR_ROOT || dataRootOverride || p.join(home, ".opendirector"),
     logsDir: env.OPENDIRECTOR_DESKTOP_LOGS || p.join(userDataPath, "logs"),
     sessionDir: p.join(userDataPath, "session"),
     cacheDir: p.join(userDataPath, "cache"),

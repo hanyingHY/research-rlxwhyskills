@@ -1,123 +1,185 @@
-# OpenDirector Desktop —— RFC #362 / D1 #363 分析与可运行基线
+# OpenDirector Desktop
 
-本目录包含三部分内容：
+与网页版**同一套创作画布**的桌面应用：自带本地服务、Agent 运行时与媒体工具，
+双击安装即可使用，不需要终端、Python 或 FFmpeg。项目、素材和模型密钥只保存在本机。
 
-| 内容 | 位置 |
+- **功能一致**：桌面版加载上游同一份 Web 构建与 `/api`，不是精简版，也没有另写一套业务逻辑。
+- **按系统分发**：Windows（NSIS）、macOS（DMG/ZIP，Apple silicon 与 Intel）、Linux（AppImage/deb/rpm，x64 与 arm64）。
+- **渐进式引导**：首次欢迎页 → 3 分钟导览 → 按需提示 → F1 帮助中心，全部可跳过、可重播、可关闭。
+- **自动更新**：macOS / Windows / Linux AppImage 使用 electron-updater + GitHub Releases，更新不打断任务。
+
+```
+┌─ Electron 主进程 ─────────────────────────────────────────────┐
+│ 单实例 · 原生菜单 · 设置(JSON) · 自动更新 · 退出协调          │
+│ 每次启动生成 256 bit token（只留在主进程）                     │
+│ od://app  ← 代理 →  127.0.0.1:<OS 分配的随机端口>              │
+│      │                    │                                   │
+│  ┌───┴──────────┐   ┌─────┴──────────────┐                    │
+│  │ 沙箱渲染进程 │   │ Python Host        │                    │
+│  │ 上游 Web UI  │   │ FastAPI + OpenCode │                    │
+│  │ preload:     │   │ + FFmpeg            │                   │
+│  │ 窄 IPC + 引导│   └────────────────────┘                    │
+│  └──────────────┘                                             │
+└───────────────────────────────────────────────────────────────┘
+```
+
+## 下载与安装
+
+发布页：`https://github.com/ThinkFlowLab/OpenDirector/releases/latest`
+（下载页模板见 [`site/index.html`](site/index.html)，按系统识别并说明安装步骤。）
+
+| 系统 | 架构 | 安装包 | 说明 |
+| --- | --- | --- | --- |
+| Windows 10/11 | x64 | `OpenDirector-<ver>-win-x64.exe` | 可选安装位置，卸载保留项目数据 |
+| macOS 11+ | Apple silicon | `OpenDirector-<ver>-mac-arm64.dmg` | 拖入「应用程序」 |
+| macOS 11+ | Intel | `OpenDirector-<ver>-mac-x64.dmg` | 同上 |
+| Linux | x64 / arm64 | `.AppImage` / `.deb` / `.rpm` | AppImage 免安装且支持自动更新 |
+
+首次启动：欢迎页说明数据位置 → 开始导览（工程、模型、助手、画布、导出）→ 进入画布。
+未配置模型时会有一次提示指向设置；每条提示都能「不再显示」。按 `F1` 随时打开帮助中心，
+按 `?` 打开画布快捷键。
+
+## 桌面版做了什么（相对上游）
+
+| 能力 | 实现 |
 | --- | --- |
-| 项目分析（它是什么、怎么运转、工程成熟度、桌面化约束） | [`docs/01-project-analysis.md`](docs/01-project-analysis.md) |
-| 对 issue #362 的判断、方案缺口、落地顺序、验收矩阵 | [`docs/02-issue-362-assessment.md`](docs/02-issue-362-assessment.md) |
-| 基线代码设计说明（模块、协议、认证、代理、退出、打包） | [`docs/03-baseline-design.md`](docs/03-baseline-design.md) |
-| 本机实际验证记录（跑了什么、结果、未覆盖项） | [`docs/04-verification.md`](docs/04-verification.md) |
-| 可直接贴到 issue 的英文评论草稿 | [`docs/05-issue-comment-draft.md`](docs/05-issue-comment-draft.md) |
+| 稳定来源 | 渲染进程加载 `od://app/`，主进程代理到随机端口，`localStorage`（主题、语言、草稿）跨启动保留 |
+| 每次启动的凭据 | 256 bit token 只在主进程；Host 用纯 ASGI 中间件校验；渲染进程、URL、日志、cookie 都拿不到 |
+| Host 生命周期 | `python host_entry.py --port 0`，stdout 控制通道 `ready/fatal/shutdown-complete`，SIGTERM → SIGKILL 兜底 |
+| 进程安全 | 单实例锁；`contextIsolation` + `sandbox` + 禁用 Node；同一 origin 的弹窗继承沙箱，其余交给系统浏览器 |
+| 任务感知退出 | 退出前查 `/api/desktop/status`，说明会中断什么；远端生成任务不被取消 |
+| 数据分离 | 程序资源只读；项目/素材默认 `~/.opendirector`（与 CLI 共享）；日志、session、缓存放应用数据目录 |
+| 桌面设置 | `desktop-settings.json`：引导进度、提示偏好、窗口位置、数据目录、更新通道；原子写入并逐字段校验 |
+| 引导层 | preload 内的 Shadow DOM 界面：欢迎页、锚定导览、渐进提示、帮助中心、诊断复制；中英双语 |
+| 更新 | electron-updater + GitHub Releases（也支持 `UPDATE_FEED_URL` 自定义 feed）；Linux 仅 AppImage |
+| 分发 | 三平台构建矩阵，按 `os-arch` 组装运行时，产物名带版本/系统/架构，附带 `latest*.yml` 更新元数据 |
 
-## 基线代码做了什么
+## 使用指引的设计
 
-一个可以在 macOS / Windows / Linux 上跑通的 Electron + Python 桌面壳骨架，围绕
-OpenDirector 现有的 Web UI 与本地 API，不修改上游业务代码：
+| 时机 | 界面 | 行为 |
+| --- | --- | --- |
+| 第一次启动 | 欢迎页 | 说明数据位置与本机特性；可选「开始」或「直接进入」；语言可当场切换 |
+| 完成欢迎 | 导览（7 步，模型已配置则 6 步） | 高亮真实控件（工程标题、设置、助手按钮、工具栏、导出区），`Esc` 跳过，`←/→/Enter` 导航 |
+| 之后 | 单张提示 | 仅在条件成立时出现一次：未配置模型、空画布、首次打开助手/时间线；可「知道了 / 不再显示」 |
+| 任何时候 | `F1` 帮助中心 | 搜索、桌面能力、常见问题、复制诊断、打开数据/日志、重播导览、重置提示 |
+| 系统菜单 | 帮助菜单 | 使用指引、重播引导、快捷键、检查更新、关于 |
 
-- **Host 生命周期**：主进程拉起 `python runtime/host_entry.py --port 0`，由操作系统分配端口，
-  通过 stdout 控制通道收到 `ready / fatal / status / shutdown-complete`，而不是解析日志。
-- **每次启动的凭据**：主进程生成 256 bit token，只存在于主进程内存；Host 侧用纯 ASGI
-  中间件校验 `Authorization: Bearer`，渲染进程、URL、日志、cookie 都拿不到。
-- **稳定 origin**：渲染进程加载 `od://app/`，主进程把请求代理到 `127.0.0.1:<随机端口>`。
-  这样主题、语言、草稿等 `localStorage` 数据不会因为端口变化而丢失，也不会产生
-  localhost cookie 泄漏给其他本机服务。
-- **沙箱渲染进程 + 窄 IPC**：`contextIsolation`、`sandbox`、禁用 Node；preload 只暴露
-  选目录、打开数据/日志目录、状态、重启、退出等少数操作，并且只接受主窗口主 frame。
-- **任务感知退出**：退出前查询 `/api/desktop/status`；有工具任务时提示会中断什么，
-  远端生成任务不会被取消。关闭窗口与退出应用在 macOS 上区分处理。
-- **资源/数据分离**：程序资源只读；项目数据默认 `~/.opendirector`（与 wheel 安装的 CLI 一致）；
-  日志、Chromium session、缓存放在平台应用数据目录。
-- **可验证的打包路径**：`electron-builder.yml`（dmg/zip、nsis、AppImage/deb/rpm）+
-  `scripts/prepare-runtime.mjs`（CPython + wheels + FFmpeg + OpenCode → 单平台 runtime）+
-  `scripts/verify-runtime.mjs`（在目标机真实启动 Host，验证动态端口、token、健康检查、状态、优雅退出）。
+引导状态写入 `desktop-settings.json`（`onboarding` / `tips`），因此升级、重启、切换语言都不会重复打扰。
+所有锚点都是上游已发布的类名（`.cw-topbar`、`.cw-rail`、`.cw-chat-button`、`#canvas-assistant` 等）；
+找不到锚点时卡片自动居中，不会因为上游改版而卡住。语言跟随 `<html data-locale>`，在应用内切换语言后引导同步切换。
 
-## 本机验证结果（Linux x86_64）
-
-```
-npm test                                 25/25 通过
-node scripts/verify-runtime.mjs ...      PASS（真实 OpenDirector 后端，启动约 1.0 s）
-```
-
-`verify-runtime` 的实际输出：
-
-```
-Host ready on 127.0.0.1:52151 (pid 2307, 994 ms)
-status {"status":"ready","port":52151,"inFlight":0,"projects":0,"activeToolTasks":[],"busy":false}
-PASS dynamic port, token, health, status, graceful shutdown
-```
-
-未验证：Electron 图形界面（本环境无显示器）、真实前端构建、Electron 内 WebCodecs MP4 导出、
-安装包、macOS/Windows、签名公证、自动更新。详见验证文档。
-
-`ci/desktop-tests.yml` 是三平台（ubuntu-22.04 / windows-2022 / macos-14）× Node 22/24
-的契约测试矩阵，复制到仓库 `.github/workflows/` 即可启用；它不依赖 Electron 与图形会话，
-因此能在 CI 上真正跑“多端”的生命周期、鉴权、代理与路径解析。
-
-## 如何运行
-
-### 1. 单元/集成测试（任意 Node ≥ 22，无需 Electron、无需 OpenDirector）
+## 从源码运行
 
 ```sh
 cd opendirector-desktop
-npm test
+npm ci
+npm run build:preload        # 生成 dist/preload.cjs（引导层 + IPC 桥）
 ```
 
-### 2. 对着真实 OpenDirector 源码验证 Host（不需要 Electron）
+需要一个可用的 Host。两种方式：
 
 ```sh
-python3 -m venv /tmp/od-venv
-/tmp/od-venv/bin/pip install fastapi uvicorn pydantic pyyaml filelock httpx anyio \
-  typer pillow pillow-heif fonttools python-multipart
-
-node scripts/verify-runtime.mjs \
-  --runtime . \
-  --python /tmp/od-venv/bin/python \
-  --host-entry runtime/host_entry.py \
-  --pythonpath "/path/to/OpenDirector/packages/core/src:/path/to/OpenDirector/apps/api/src" \
-  --data /tmp/od-verify
-```
-
-### 3. 启动 Electron 壳（开发模式）
-
-```sh
-cd opendirector-desktop
-npm install                 # 会下载 Electron
-node scripts/prepare-runtime.mjs \
-  --python /path/to/python-build-standalone \
-  --wheels /path/to/target/wheels \
-  --ffmpeg /path/to/ffmpeg-dir \
-  --target linux-x64
-npm start
-```
-
-没有组装 runtime 时，也可以指向一个 venv：
-
-```sh
+# A. 指向已有的 OpenDirector 源码 + venv
 OPENDIRECTOR_PYTHON=/path/to/.venv/bin/python \
 OPENDIRECTOR_PYTHONPATH=/path/to/OpenDirector/packages/core/src:/path/to/OpenDirector/apps/api/src \
 OPENDIRECTOR_ROOT=/tmp/od-data \
 npm start
+
+# B. 组装完整运行时（与发布包一致）
+node scripts/fetch-python.mjs  --target linux-x64
+node scripts/fetch-ffmpeg.mjs  --target linux-x64
+python -m pip wheel /path/to/OpenDirector -w runtime/wheels
+node scripts/prepare-runtime.mjs --target linux-x64
+node scripts/verify-runtime.mjs --runtime runtime/dist/linux-x64
+npm start
 ```
 
-> `npm start` 需要图形会话。CI 里可以用 `xvfb-run`（Linux）或对应平台的 runner。
-
-### 4. 打包
+`npm start` 需要图形会话（Linux 可用 `xvfb-run`）。纯逻辑与引导层的测试不需要 Electron：
 
 ```sh
-npm run pack:dir     # 只产出目录，便于冒烟
-npm run dist         # dmg/zip、nsis、AppImage/deb/rpm
+npm test                                        # 54 个测试：生命周期、鉴权、代理、设置、更新、引导、渲染
+node --test tests/render.test.mjs               # 其中引导界面用 jsdom 真实渲染
 ```
 
-打包前 `runtime/dist/<mac|win|linux>-<arch>/` 必须存在且已通过 `verify-runtime`。
-平台矩阵与签名步骤见设计文档。
+## 构建与发布
 
-## 边界声明
+```sh
+npm run build:preload
+npm run dist:linux        # 或 dist:win / dist:mac；需先准备 runtime/dist/<os>-<arch>
+```
 
-这是**基线骨架**，不是可直接合并的 D1 交付：
+完整的按系统发布由 [`.github/workflows/desktop-release.yml`](../.github/workflows/desktop-release.yml) 完成：
 
-- 没有改 OpenDirector 上游任何代码；Host 包装层独立存在，正式实现应落到
-  `apps/api/src/opendirector_api/` 并由仓库测试覆盖。
-- 任务状态目前只能看到工具任务；Agent 轮次与生成任务需要上游补一个正式接口。
-- 自动更新、公证、代码签名、Windows ARM64、Linux musl 均未实现。
-- 安装包体积、许可证合规（尤其 FFmpeg/libx264）需要产品与法务决策。
+1. 校验 tag 与 `package.json` 版本一致，跑契约测试；
+2. 每个系统/架构各自 checkout 上游源码，`npm ci` + `pip wheel` 得到该平台的 wheel 集；
+3. `fetch-python` / `fetch-ffmpeg` / `prepare-runtime` 组装 `runtime/dist/<os>-<arch>`；
+4. `electron-builder --publish always` 上传安装包与 `latest*.yml` 到 GitHub Release；
+5. 最后一个 job 把 draft release 转正（`--latest`），下载页与自动更新立即生效。
+
+```sh
+git tag v0.1.4 && git push origin v0.1.4      # 版本必须与 package.json 相同
+```
+
+> 桌面版本号刻意与内置 OpenDirector 版本保持一致（RFC 决策 7）。升级上游时，同时改
+> `package.json` 与本目录版本，再打新 tag。
+
+### 签名、公证与许可证
+
+- 默认构建**不签名**：可以安装运行，但 macOS/Windows 会提示一次，且自动更新需要签名校验
+  （未签名版本请手动下载新包）。在仓库 secrets 里配置 `CSC_LINK`、`CSC_KEY_PASSWORD`、
+  `APPLE_ID` 等即可让 electron-builder 走签名流程。
+- FFmpeg 使用 libx264（GPL）构建，随包分发需遵守 GPL；介意的发行版可换成 LGPL 构建，
+  但 MP4/H.264 导出能力会受影响。许可证文本应随安装包分发。
+- Linux 自动更新只支持 AppImage；deb/rpm 用户会看到「请下载新安装包」的提示。
+
+## 数据位置
+
+| 内容 | 路径 |
+| --- | --- |
+| 项目、素材、模型配置 | `~/.opendirector`（可用「文件 → 更改项目数据目录」修改，与 CLI 共享） |
+| 桌面设置（引导进度、窗口、更新通道） | Windows `%APPDATA%/OpenDirector/desktop-settings.json`；macOS `~/Library/Application Support/OpenDirector/`；Linux `~/.config/OpenDirector/` |
+| 日志 | 同上目录下的 `logs/desktop.log`、`logs/host.log` |
+| Chromium session / 缓存 | 同上目录下的 `session/`、`cache/` |
+
+卸载不会删除项目数据；`logs/` 与 `desktop-settings.json` 可安全删除以重置引导。
+
+## 本机验证（Linux x86_64）
+
+```
+npm test                              54/54 通过（含 7 个 jsdom 引导界面测试）
+node scripts/build-preload.mjs        dist/preload.cjs 57 KiB
+node scripts/verify-runtime.mjs       PASS dynamic port, token, health, status, graceful shutdown
+```
+
+未覆盖：Electron 图形界面与安装包（本环境无显示器/无 Electron 二进制）、真实 WebCodecs
+MP4 导出、macOS/Windows 安装体验、签名与自动更新的端到端升级。发布前请在一台干净机器上跑
+[RFC 验收清单](#验收对照)。
+
+## 验收对照（RFC #362）
+
+| 验收项 | 状态 | 实现/缺口 |
+| --- | --- | --- |
+| 干净环境安装 → 建工程 → Agent → 编辑 → 导出 → 重开 | 代码就绪 | 需在带显示器的真机跑通并记录 |
+| 更新与卸载不丢数据 | 已实现 | 数据在 `~/.opendirector`，NSIS `deleteAppDataOnUninstall: false` |
+| 中英双语 | 已实现 | 界面跟随上游；引导/帮助中心自带双语并跟随切换 |
+| 声明系统/架构/格式 | 已实现 | 下载页 + 产物命名 + 本文档矩阵 |
+| 自动更新 | 已实现 | electron-updater；需签名后才能验证升级链路 |
+| 渐进式指引 | 已实现 | 欢迎页、导览、提示、帮助中心、菜单入口 |
+
+## 文档
+
+| 文档 | 内容 |
+| --- | --- |
+| [`docs/01-project-analysis.md`](docs/01-project-analysis.md) | 上游项目分析（阶段一） |
+| [`docs/02-issue-362-assessment.md`](docs/02-issue-362-assessment.md) | 对 RFC #362 的判断与 8 个待决问题 |
+| [`docs/03-baseline-design.md`](docs/03-baseline-design.md) | 桌面壳设计：协议、认证、代理、退出、打包 |
+| [`docs/04-verification.md`](docs/04-verification.md) | 本机验证记录与未覆盖项 |
+| [`docs/05-issue-comment-draft.md`](docs/05-issue-comment-draft.md) | 可直接贴到 issue 的评论草稿 |
+| [`docs/06-desktop-product.md`](docs/06-desktop-product.md) | 产品化细节：引导状态机、设置模型、更新与发布 |
+
+## 边界
+
+- 未修改上游任何业务代码；Host 包装层（`runtime/host_entry.py`）是独立文件，正式实现仍应落到
+  `apps/api/` 并由上游测试覆盖。
+- 退出检查目前只能看到工具任务；Agent 轮次与生成任务需要上游补接口（`notExposed` 字段已如实上报）。
+- 上游改类名会影响导览锚点；已做「找不到就居中」降级，但建议上游给关键控件加 `data-*` 稳定标记。

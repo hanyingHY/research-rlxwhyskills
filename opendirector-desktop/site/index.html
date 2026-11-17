@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenDirector Desktop · 下载</title>
+    <meta
+      name="description"
+      content="OpenDirector 桌面版：与网页版同一套创作画布，自带运行时、媒体工具与使用指引。支持 Windows、macOS 与 Linux。"
+    />
+    <!-- 发布到你的 fork 时，只需要改这一行和下文的仓库链接。 -->
+    <meta name="github-repo" content="ThinkFlowLab/OpenDirector" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d0e11;
+        --panel: #15161a;
+        --panel-2: #1b1d22;
+        --line: rgba(255, 255, 255, 0.09);
+        --text: #f2f2f3;
+        --muted: #9b9ba3;
+        --amber: #f5b54a;
+        --amber-soft: rgba(245, 181, 74, 0.12);
+        --teal: #2dd4bf;
+        --radius: 18px;
+        --max: 1080px;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        background:
+          radial-gradient(900px 520px at 18% -10%, rgba(245, 181, 74, 0.09), transparent 60%),
+          radial-gradient(700px 500px at 88% 8%, rgba(45, 212, 191, 0.07), transparent 62%),
+          var(--bg);
+        color: var(--text);
+        font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: inherit; }
+      .wrap { width: min(var(--max), calc(100% - 40px)); margin: 0 auto; }
+      header.nav {
+        position: sticky; top: 0; z-index: 10;
+        backdrop-filter: blur(14px);
+        background: rgba(13, 14, 17, 0.72);
+        border-bottom: 1px solid var(--line);
+      }
+      .nav-inner { display: flex; align-items: center; gap: 14px; height: 62px; }
+      .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -0.01em; }
+      .brand svg { width: 26px; height: 26px; }
+      .nav-links { margin-left: auto; display: flex; gap: 18px; font-size: 13.5px; color: var(--muted); }
+      .nav-links a { text-decoration: none; }
+      .nav-links a:hover { color: var(--text); }
+      @media (max-width: 720px) { .nav-links { display: none; } }
+
+      .hero { padding: 76px 0 40px; display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 56px; align-items: center; }
+      @media (max-width: 900px) { .hero { grid-template-columns: 1fr; padding-top: 52px; gap: 34px; } }
+      .pill {
+        display: inline-flex; align-items: center; gap: 8px;
+        border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03);
+        color: var(--muted); font-size: 12.5px; padding: 5px 12px; border-radius: 999px;
+      }
+      .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+      h1 { font-size: clamp(30px, 4.4vw, 46px); line-height: 1.15; letter-spacing: -0.025em; margin: 18px 0 14px; }
+      h1 em { font-style: normal; color: var(--amber); }
+      .lede { color: var(--muted); font-size: 16px; max-width: 46ch; }
+      .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 11px 18px; border-radius: 11px; border: 1px solid var(--line);
+        background: var(--panel); color: var(--text); text-decoration: none;
+        font-size: 14px; font-weight: 550; transition: transform .12s ease, background .15s ease;
+      }
+      .btn:hover { background: var(--panel-2); transform: translateY(-1px); }
+      .btn.primary { background: var(--amber); border-color: transparent; color: #1a1408; }
+      .btn.primary:hover { filter: brightness(1.05); }
+      .meta { margin-top: 16px; font-size: 12.5px; color: var(--muted); }
+
+      .preview {
+        border: 1px solid var(--line); border-radius: 22px; background: var(--panel);
+        padding: 10px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      }
+      .preview .chrome { display: flex; gap: 6px; padding: 6px 8px 10px; }
+      .preview .chrome i { width: 9px; height: 9px; border-radius: 50%; background: #2e3037; }
+      .preview .screen {
+        border-radius: 14px; background: linear-gradient(160deg, #1c1e24, #121317 60%);
+        border: 1px solid var(--line); aspect-ratio: 16 / 10; position: relative; overflow: hidden;
+      }
+      .preview .screen svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .preview .caption { display: flex; justify-content: space-between; padding: 9px 6px 2px; font-size: 11.5px; color: var(--muted); }
+
+      section { padding: 56px 0; }
+      section > h2 { font-size: 22px; letter-spacing: -0.02em; margin: 0 0 6px; }
+      section > p.sub { margin: 0 0 26px; color: var(--muted); }
+
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      @media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+      .card {
+        border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+        padding: 20px; display: flex; flex-direction: column; gap: 10px;
+      }
+      .card .os { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+      .card .os svg { width: 20px; height: 20px; }
+      .card .tag { font-size: 11.5px; color: var(--muted); }
+      .card ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+      .card .btn { margin-top: auto; justify-content: center; }
+      .detected { outline: 1px solid rgba(245, 181, 74, 0.5); background: linear-gradient(180deg, rgba(245,181,74,.06), transparent); }
+
+      .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: step; }
+      @media (max-width: 880px) { .steps { grid-template-columns: 1fr; } }
+      .step { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; background: var(--panel); }
+      .step::before {
+        counter-increment: step; content: counter(step);
+        display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px;
+        background: var(--amber-soft); color: var(--amber); font-size: 12.5px; font-weight: 650; margin-bottom: 12px;
+      }
+      .step h3 { margin: 0 0 6px; font-size: 15px; }
+      .step p { margin: 0; color: var(--muted); font-size: 13.5px; }
+      .step code { background: rgba(255,255,255,.06); border-radius: 5px; padding: 1px 5px; font-size: 12px; }
+
+      .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      @media (max-width: 880px) { .split { grid-template-columns: 1fr; } }
+      .list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+      .list li { display: flex; gap: 10px; color: var(--muted); font-size: 14px; }
+      .list li::before {
+        content: ""; flex: 0 0 auto; width: 16px; height: 16px; margin-top: 3px; border-radius: 50%;
+        background: var(--amber-soft);
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M4.5 8.4l2.2 2.2 4.6-4.9' fill='none' stroke='%23f5b54a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+      }
+      .list li b { color: var(--text); font-weight: 600; }
+
+      details {
+        border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+        padding: 14px 16px; margin-bottom: 10px;
+      }
+      details summary { cursor: pointer; font-weight: 550; font-size: 14px; }
+      details p { margin: 10px 0 0; color: var(--muted); font-size: 13.5px; }
+
+      footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--muted); font-size: 12.5px; }
+      footer .row { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
+      .note { border-left: 2px solid var(--amber); padding: 2px 0 2px 14px; color: var(--muted); font-size: 13px; margin-top: 16px; }
+    </style>
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <div class="brand">
+          <svg viewBox="0 0 96 96" aria-hidden="true">
+            <rect x="2" y="2" width="92" height="92" rx="22" fill="#1d2027" stroke="rgba(255,255,255,.08)" />
+            <path d="M20 34 L44 27 V38 L20 45 Z" fill="#f8c667" />
+            <path d="M20 47 L44 40 V51 L20 58 Z" fill="#eda43a" />
+            <path d="M20 60 L44 53 V64 L20 71 Z" fill="#eda43a" opacity=".85" />
+            <path d="M55 32 L78 48 L55 64 Z" fill="#f5b54a" />
+            <circle cx="30" cy="22" r="3" fill="#2dd4bf" />
+            <circle cx="31" cy="79" r="2.5" fill="#2dd4bf" opacity=".75" />
+          </svg>
+          OpenDirector
+        </div>
+        <nav class="nav-links">
+          <a href="#download">下载</a>
+          <a href="#features">功能</a>
+          <a href="#guide">使用指引</a>
+          <a href="#install">安装</a>
+          <a href="#faq">常见问题</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="hero">
+        <div>
+          <span class="pill"><span class="dot"></span>桌面版 · 与网页版功能完全一致</span>
+          <h1>把创作画布<br />装进<em>桌面应用</em></h1>
+          <p class="lede">
+            不用再开终端、装 Python、配 FFmpeg。下载对应系统的安装包，双击打开就是完整的 OpenDirector：
+            本地服务、Agent 运行时、媒体工具与引导都在里面。项目和素材只保存在你的电脑上。
+          </p>
+          <div class="hero-actions">
+            <a class="btn primary" data-download="auto" href="https://github.com/ThinkFlowLab/OpenDirector/releases/latest">
+              下载适合本机的版本
+            </a>
+            <a class="btn" href="https://github.com/ThinkFlowLab/OpenDirector/releases/latest">所有版本与校验文件</a>
+          </div>
+          <p class="meta" id="platform-note">支持 Windows 10/11、macOS 11+、主流 Linux 发行版（x64 与 arm64）。</p>
+        </div>
+
+        <div class="preview" aria-hidden="true">
+          <div class="chrome"><i></i><i></i><i></i></div>
+          <div class="screen">
+            <svg viewBox="0 0 800 500">
+              <rect width="800" height="500" fill="none" />
+              <rect x="0" y="0" width="800" height="44" fill="#191b20" />
+              <circle cx="26" cy="22" r="5" fill="#f5b54a" opacity=".8" />
+              <rect x="44" y="16" width="120" height="12" rx="6" fill="#2b2e35" />
+              <rect x="700" y="14" width="24" height="16" rx="5" fill="#2b2e35" />
+              <rect x="732" y="14" width="24" height="16" rx="5" fill="#2b2e35" />
+              <rect x="764" y="14" width="24" height="16" rx="5" fill="#2b2e35" />
+              <rect x="0" y="44" width="58" height="456" fill="#16181c" />
+              <rect x="14" y="66" width="30" height="30" rx="8" fill="#23262d" />
+              <rect x="14" y="108" width="30" height="30" rx="8" fill="#23262d" />
+              <rect x="14" y="150" width="30" height="30" rx="8" fill="#23262d" />
+              <rect x="14" y="192" width="30" height="30" rx="8" fill="#23262d" />
+              <rect x="58" y="44" width="544" height="456" fill="#101114" />
+              <path d="M150 150 L330 120 L330 200 L150 230 Z" fill="#f8c667" opacity=".9" />
+              <path d="M150 250 L330 220 L330 300 L150 330 Z" fill="#eda43a" opacity=".8" />
+              <path d="M470 130 L600 230 L470 330 Z" fill="#f5b54a" opacity=".9" />
+              <circle cx="150" cy="120" r="6" fill="#2dd4bf" />
+              <circle cx="600" cy="120" r="6" fill="#2dd4bf" />
+              <circle cx="440" cy="360" r="6" fill="#2dd4bf" />
+              <path d="M150 120 L600 120 L440 360 Z" fill="none" stroke="rgba(45,212,191,.35)" />
+              <rect x="610" y="44" width="190" height="456" fill="#15171b" />
+              <circle cx="640" cy="80" r="10" fill="#2dd4bf" opacity=".8" />
+              <rect x="660" y="72" width="90" height="10" rx="5" fill="#2b2e35" />
+              <rect x="628" y="110" width="150" height="10" rx="5" fill="#2b2e35" />
+              <rect x="628" y="132" width="120" height="10" rx="5" fill="#2b2e35" />
+              <rect x="628" y="154" width="136" height="10" rx="5" fill="#2b2e35" />
+              <rect x="628" y="380" width="150" height="34" rx="8" fill="#23262d" />
+              <rect x="628" y="430" width="150" height="34" rx="8" fill="#f5b54a" opacity=".85" />
+            </svg>
+          </div>
+          <div class="caption"><span>创作画布 / 工程 / 对话助手</span><span>v0.1.4</span></div>
+        </div>
+      </div>
+
+      <section id="download">
+        <h2>选择你的系统</h2>
+        <p class="sub">所有安装包都由 GitHub Actions 在对应系统上构建，可从发布页获取 SHA-256 校验文件。</p>
+        <div class="grid">
+          <article class="card" data-os="win">
+            <div class="os">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5l7-1v7H3v-6zm0 7h7v7l-7-1v-6zm8-9.2L21 2v9.5h-10V3.3zM11 12.5h10V22l-10-1.2v-8.3z"/></svg>
+              Windows
+            </div>
+            <span class="tag">Windows 10 / 11 · x64</span>
+            <ul>
+              <li>NSIS 安装包，可选安装位置</li>
+              <li>开始菜单与桌面快捷方式</li>
+              <li>卸载不会删除项目数据</li>
+            </ul>
+            <a class="btn" data-download="win" href="https://github.com/ThinkFlowLab/OpenDirector/releases/latest">下载 .exe</a>
+          </article>
+
+          <article class="card" data-os="mac">
+            <div class="os">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.9-1.5-.2-2.8.8-3.6.8-.7 0-1.9-.8-3.1-.8-1.6 0-3.1.9-3.9 2.4-1.7 2.9-.4 7.2 1.2 9.5.8 1.1 1.7 2.4 3 2.4 1.2 0 1.6-.8 3.1-.8 1.4 0 1.8.8 3 .8 1.3 0 2.1-1.1 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7 0 0-2.5-1-2.5-3.9zM14.1 5.7c.7-.8 1.1-1.9 1-3-1 .1-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1 .1 2.1-.6 2.9-1.5z"/></svg>
+              macOS
+            </div>
+            <span class="tag">macOS 11+ · Apple silicon / Intel</span>
+            <ul>
+              <li>DMG 拖拽安装</li>
+              <li>Universal 体验：两种芯片各自原生运行</li>
+              <li>未签名版本需在系统设置中放行一次</li>
+            </ul>
+            <a class="btn" data-download="mac-arm64" href="https://github.com/ThinkFlowLab/OpenDirector/releases/latest">下载 .dmg（Apple silicon）</a>
+            <a class="btn" data-download="mac-x64" href="https://github.com/ThinkFlowLab/OpenDirector/releases/latest">下载 .dmg（Intel）</a>
+          </article>
+
+          <article class="card" data-os="linux">
+            <div class="os">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c-1.7 0-3 1.5-3 3.4 0 1.5.4 2.1.4 3.2 0 .7-.5 1.4-1.1 2.3C7.2 12.3 6 14 6 16.2c0 1.1.3 2 .8 2.7-.5.2-.8.6-.8 1.1 0 .9 1.4 1.6 3.3 1.9.7.1 1.3.1 1.9.1.9 0 1.7-.1 2.4-.3 1.5-.3 2.4-.9 2.4-1.7 0-.5-.3-.9-.8-1.1.5-.7.8-1.6.8-2.7 0-2.2-1.2-3.9-2.3-5.3-.6-.9-1.1-1.6-1.1-2.3 0-1.1.4-1.7.4-3.2C15 3.5 13.7 2 12 2zm-1.2 6.1c.3 0 .5.4.5.8s-.2.8-.5.8-.5-.4-.5-.8.2-.8.5-.8zm2.4 0c.3 0 .5.4.5.8s-.2.8-.5.8-.5-.4-.5-.8.2-.8.5-.8zM9.8 20.9c.6.1 1.3.2 2.2.2s1.6-.1 2.2-.2c-.6.3-1.3.4-2.2.4s-1.6-.1-2.2-.4z"/></svg>
+              Linux
+            </div>
+            <span class="tag">x64 / arm64 · AppImage · deb · rpm</span>
+            <ul>
+              <li>AppImage：免安装，支持自动更新</li>
+              <li>deb / rpm：走系统包管理器</li>
+              <li>需要 FUSE 才能运行 AppImage</li>
+            </ul>
+            <a class="btn" data-download="linux" href="https://github.com/ThinkFlowLab/OpenDirector/releases/latest">下载 .AppImage</a>
+          </article>
+        </div>
+        <p class="note">
+          页面不会自动开始下载，也不会追踪你。点击后会打开 GitHub 发布页，由你选择具体架构与格式。
+        </p>
+      </section>
+
+      <section id="features">
+        <h2>和网页版一模一样的创作能力</h2>
+        <p class="sub">桌面版加载的是同一套界面与业务逻辑，不是精简版，也不是另一套实现。</p>
+        <div class="split">
+          <ul class="list">
+            <li><b>完整画布</b>：文本、图像、视频、音频、主体与时间线节点，拖拽导入，自动保存。</li>
+            <li><b>对话助手</b>：生成素材、整理画布、编排时间线，输入 @ 引用现有素材。</li>
+            <li><b>时间线与导出</b>：本机渲染 MP4，支持素材包与画布导出。</li>
+            <li><b>模型连接</b>：对话 / 图像 / 视频 / 语音服务，密钥留在本机。</li>
+          </ul>
+          <ul class="list">
+            <li><b>同一份数据</b>：与命令行共享 <code>~/.opendirector</code>，随时切换工作方式。</li>
+            <li><b>自带运行时</b>：Python、OpenCode Agent 与 FFmpeg 随应用安装，不需要自己配环境。</li>
+            <li><b>自动更新</b>：macOS / Windows / Linux AppImage 内置更新检查，更新不打断正在进行的任务。</li>
+            <li><b>中英双语</b>：界面、引导、帮助中心都跟随系统语言，可随时切换。</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="guide">
+        <h2>渐进式指引，不打扰</h2>
+        <p class="sub">第一次打开时有一次欢迎页与 3 分钟导览；之后只在需要的时候出现一张小提示。</p>
+        <div class="steps">
+          <div class="step">
+            <h3>首次启动</h3>
+            <p>欢迎页说明数据放在哪里，并提供「开始导览」或「直接进入」，选择会被记住。</p>
+          </div>
+          <div class="step">
+            <h3>按需提示</h3>
+            <p>没有配置模型、第一次打开时间线、打开助手时才出现对应提示，每条都能「不再显示」。</p>
+          </div>
+          <div class="step">
+            <h3>随时回看</h3>
+            <p>按 F1 打开桌面版指引，按 ? 查看画布快捷键；帮助里可以重播导览、重置提示、打开日志。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="install">
+        <h2>安装</h2>
+        <p class="sub">从 GitHub 发布页下载与你的系统、架构对应的安装包。</p>
+        <div class="steps">
+          <div class="step">
+            <h3>Windows</h3>
+            <p>运行 <code>OpenDirector-&lt;版本&gt;-win-x64.exe</code>，选择安装位置。SmartScreen 提示时选择「更多信息 → 仍要运行」。</p>
+          </div>
+          <div class="step">
+            <h3>macOS</h3>
+            <p>打开 DMG 把 OpenDirector 拖进「应用程序」。首次启动若被拦截，到「系统设置 → 隐私与安全性」点「仍要打开」。</p>
+          </div>
+          <div class="step">
+            <h3>Linux</h3>
+            <p><code>chmod +x OpenDirector-*.AppImage &amp;&amp; ./OpenDirector-*.AppImage</code>；或 <code>sudo apt install ./OpenDirector-*.deb</code>。</p>
+          </div>
+        </div>
+        <p class="note">
+          从源码运行：<code>cd opendirector-desktop &amp;&amp; npm ci &amp;&amp; npm start</code>。需要 Node 22+、Python 3.12 与 FFmpeg。
+        </p>
+      </section>
+
+      <section id="faq">
+        <h2>常见问题</h2>
+        <details>
+          <summary>为什么安装包这么大？</summary>
+          <p>安装包内含 Python 运行时、OpenDirector 依赖、Agent 二进制与 FFmpeg，安装后约 500–700 MB。这是「不需要用户装环境」的代价。</p>
+        </details>
+        <details>
+          <summary>会自动上传我的项目吗？</summary>
+          <p>不会。项目、素材与模型密钥都保存在本机；只有你配置的模型服务会收到生成请求。日志不记录密钥与请求正文。</p>
+        </details>
+        <details>
+          <summary>项目存在哪里？</summary>
+          <p>默认是主目录下的 <code>.opendirector</code>，与命令行版本共用。可以在「文件 → 更改项目数据目录」里修改，重启后生效。</p>
+        </details>
+        <details>
+          <summary>为什么 macOS / Windows 提示未签名？</summary>
+          <p>当前发布流程默认不签名。未签名安装包可以运行，但系统会提示一次；同时自动更新需要签名校验，未签名版本请手动下载新安装包。</p>
+        </details>
+        <details>
+          <summary>桌面版和网页版会有功能差异吗？</summary>
+          <p>业务功能一致：桌面版加载同一份 Web 界面与 API。差异只在桌面外壳：原生窗口、菜单、更新、数据目录与引导层。</p>
+        </details>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap row">
+        <span>OpenDirector Desktop · 本地优先的 AI 视频创作画布</span>
+        <span><a href="https://github.com/ThinkFlowLab/OpenDirector">GitHub</a> · Apache-2.0（随包 FFmpeg 为 GPL）</span>
+      </div>
+    </footer>
+
+    <script>
+      (() => {
+        const repo = document.querySelector('meta[name="github-repo"]').content;
+        const base = `https://github.com/${repo}/releases/latest`;
+        document.querySelectorAll('a[data-download]').forEach((link) => { link.href = base; });
+        const ua = navigator.userAgent;
+        const platform = /Windows/i.test(ua) ? 'win' : /Mac OS X|Macintosh/i.test(ua) ? 'mac' : /Linux|X11/i.test(ua) ? 'linux' : null;
+        if (!platform) return;
+        const card = document.querySelector(`.card[data-os="${platform}"]`);
+        if (card) {
+          card.classList.add('detected');
+          const label = card.querySelector('.tag');
+          if (label) label.textContent += ' · 已识别为你的系统';
+        }
+        const note = document.getElementById('platform-note');
+        if (note && platform === 'mac') {
+          const arm = /arm64|aarch64/i.test(ua);
+          note.textContent = arm
+            ? '检测到 Apple silicon：请下载 macOS Apple silicon 版本。'
+            : '检测到 Intel Mac：请下载 macOS Intel 版本。';
+        }
+      })();
+    </script>
+  </body>
+</html>

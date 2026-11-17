@@ -446,6 +446,43 @@ export class HostSupervisor extends EventEmitter {
   }
 
   /**
+   * Facts the guidance layer needs to avoid telling a user to do something they
+   * have already done. Never throws; unknown counts as "not configured" only
+   * when the API truly says so.
+   */
+  async facts() {
+    const result = {
+      ok: false,
+      hasModels: false,
+      hasProjects: false,
+      modelCount: 0,
+      projectCount: 0,
+      error: null,
+    };
+    try {
+      const [models, projects] = await Promise.all([
+        this.request("/api/models", { timeout: 4_000 }),
+        this.request("/api/projects", { timeout: 4_000 }),
+      ]);
+      if (models.status === 200) {
+        const list = models.json();
+        result.modelCount = Array.isArray(list) ? list.length : 0;
+        result.hasModels = result.modelCount > 0;
+      }
+      if (projects.status === 200) {
+        const payload = projects.json();
+        const list = Array.isArray(payload) ? payload : payload?.projects;
+        result.projectCount = Array.isArray(list) ? list.length : 0;
+        result.hasProjects = result.projectCount > 0;
+      }
+      result.ok = models.status === 200 || projects.status === 200;
+    } catch (error) {
+      result.error = redact(String(error?.message ?? error), [this.#token]);
+    }
+    return result;
+  }
+
+  /**
    * Graceful shutdown: ask over the control channel, then escalate to SIGTERM
    * and finally SIGKILL with bounded waits. Resolves once the process is gone.
    */

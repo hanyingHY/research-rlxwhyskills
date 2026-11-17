@@ -6,10 +6,25 @@ import { join } from "node:path";
  * export and preview work running while the window is not focused; export still
  * requires the window to stay open, which the quit dialog explains.
  */
-export function createMainWindow({ BrowserWindow, preloadPath, backgroundColor = "#111214" }) {
+export function createMainWindow({
+  BrowserWindow,
+  preloadPath,
+  backgroundColor = "#111214",
+  bounds = null,
+}) {
+  const restored = bounds && Number.isFinite(bounds.width) && Number.isFinite(bounds.height)
+    ? {
+        width: bounds.width,
+        height: bounds.height,
+        ...(Number.isFinite(bounds.x) && Number.isFinite(bounds.y)
+          ? { x: Math.round(bounds.x), y: Math.round(bounds.y) }
+          : {}),
+      }
+    : {};
   const window = new BrowserWindow({
     width: 1440,
     height: 900,
+    ...restored,
     minWidth: 960,
     minHeight: 640,
     show: false,
@@ -27,9 +42,15 @@ export function createMainWindow({ BrowserWindow, preloadPath, backgroundColor =
       spellcheck: false,
       backgroundThrottling: false,
       navigateOnDragDrop: false,
+      // Marks the primary window so the guidance layer only mounts here;
+      // popup windows (assistant traces) still get the same sandbox.
+      additionalArguments: ["--od-window=main"],
     },
   });
-  window.once("ready-to-show", () => window.show());
+  window.once("ready-to-show", () => {
+    if (bounds?.maximized) window.maximize();
+    window.show();
+  });
   return window;
 }
 

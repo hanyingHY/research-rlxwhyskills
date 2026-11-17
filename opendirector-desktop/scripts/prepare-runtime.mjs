@@ -94,6 +94,16 @@ function filesUnder(directory) {
 }
 
 const options = parseArgs(process.argv.slice(2));
+// Defaults match what fetch-python/fetch-ffmpeg produce, so CI can run the
+// three scripts in sequence without restating paths.
+const fetchedPython = join(ROOT, "runtime", "dist", ".python", `${options.target}-python`);
+const fetchedFfmpeg = join(ROOT, "runtime", "dist", ".ffmpeg", `${options.target}-bin`);
+if (!options.python && existsSync(fetchedPython)) options.python = fetchedPython;
+if (!options.ffmpeg && existsSync(fetchedFfmpeg)) options.ffmpeg = fetchedFfmpeg;
+if (!options.wheels) {
+  const defaultWheels = join(ROOT, "runtime", "wheels");
+  if (existsSync(defaultWheels)) options.wheels = defaultWheels;
+}
 if (!options.python || !options.wheels) {
   fail("--python and --wheels are required (see the header of this file)");
 }

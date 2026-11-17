@@ -171,13 +171,17 @@ Yes. Say what outcome must be preserved, authorize the rebuild scope, and requir
 ## 9. Project study: OpenDirector desktop / 项目研究：OpenDirector 桌面化
 
 An analysis of [ThinkFlowLab/OpenDirector](https://github.com/ThinkFlowLab/OpenDirector)
-and RFC [#362](https://github.com/ThinkFlowLab/OpenDirector/issues/362), with a runnable
-Electron + Python baseline for the D1 desktop shell.
+and RFC [#362](https://github.com/ThinkFlowLab/OpenDirector/issues/362), followed by a
+shippable desktop application: the same creation canvas, with the runtime bundled and
+per-OS installers built by [`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml).
 
-对 OpenDirector 及 RFC #362 的分析，以及可运行的 Electron + Python 桌面壳基线（D1）：
+对 OpenDirector 及 RFC #362 的分析，以及一个可分发、可安装、与网页版同功能的桌面应用
+（自带运行时、三平台安装包、渐进式引导与自动更新）：
 
 - [Index / 总览](opendirector-desktop/README.md)
 - [Project analysis / 项目分析](opendirector-desktop/docs/01-project-analysis.md)
 - [Issue #362 assessment / 任务判断](opendirector-desktop/docs/02-issue-362-assessment.md)
 - [Baseline design / 基线设计](opendirector-desktop/docs/03-baseline-design.md)
 - [Verification / 验证记录](opendirector-desktop/docs/04-verification.md)
+- [Issue comment draft / 评论草稿](opendirector-desktop/docs/05-issue-comment-draft.md)
+- [Desktop product / 桌面产品化](opendirector-desktop/docs/06-desktop-product.md)

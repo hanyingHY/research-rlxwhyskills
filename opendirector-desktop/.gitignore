@@ -5,3 +5,7 @@ runtime/dist/
 __pycache__/
 *.pyc
 .DS_Store
+dist/
+runtime/wheels/
+runtime/downloads/
+runtime/src/

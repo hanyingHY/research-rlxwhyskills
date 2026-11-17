@@ -9,6 +9,7 @@ const STRINGS = {
     quit: "退出 OpenDirector",
     file: "文件",
     openData: "打开项目数据目录",
+    changeData: "更改项目数据目录…",
     openLogs: "打开日志目录",
     close: "关闭窗口",
     edit: "编辑",
@@ -17,6 +18,11 @@ const STRINGS = {
     devTools: "开发者工具",
     help: "帮助",
     project: "项目主页",
+    guide: "使用指引",
+    tour: "重播使用引导",
+    shortcuts: "键盘快捷键",
+    updates: "检查更新…",
+    settings: "桌面设置",
   },
   "en-US": {
     about: "About OpenDirector",
@@ -27,6 +33,7 @@ const STRINGS = {
     quit: "Quit OpenDirector",
     file: "File",
     openData: "Open Project Data Folder",
+    changeData: "Change Project Data Folder…",
     openLogs: "Open Log Folder",
     close: "Close Window",
     edit: "Edit",
@@ -35,6 +42,11 @@ const STRINGS = {
     devTools: "Developer Tools",
     help: "Help",
     project: "Project Home",
+    guide: "Desktop Guide",
+    tour: "Replay the Tour",
+    shortcuts: "Keyboard Shortcuts",
+    updates: "Check for Updates…",
+    settings: "Desktop Settings",
   },
 };
 
@@ -53,6 +65,8 @@ export function buildMenu({ Menu, app, shell, locale = "en-US", actions }) {
       submenu: [
         { role: "about", label: t.about },
         { type: "separator" },
+        { label: t.updates, click: () => actions.checkUpdates() },
+        { type: "separator" },
         { role: "services", label: t.services },
         { type: "separator" },
         { role: "hide", label: t.hide },
@@ -68,9 +82,12 @@ export function buildMenu({ Menu, app, shell, locale = "en-US", actions }) {
     label: t.file,
     submenu: [
       { label: t.openData, click: () => actions.openDataFolder() },
+      { label: t.changeData, click: () => actions.changeDataRoot() },
       { label: t.openLogs, click: () => actions.openLogs() },
       { type: "separator" },
-      isMac ? { role: "close", label: t.close } : { label: t.quit, click: () => actions.requestQuit() },
+      isMac
+        ? { role: "close", label: t.close }
+        : { label: t.quit, accelerator: "Ctrl+Q", click: () => actions.requestQuit() },
     ],
   });
 
@@ -101,16 +118,25 @@ export function buildMenu({ Menu, app, shell, locale = "en-US", actions }) {
     ],
   });
 
-  template.push({
-    role: "help",
-    label: t.help,
-    submenu: [
-      {
-        label: t.project,
-        click: () => shell.openExternal("https://github.com/ThinkFlowLab/OpenDirector"),
-      },
-    ],
-  });
+  // The guide lives under Help with F1, and every entry point is mirrored in
+  // the in-app help centre so keyboard and mouse users find the same things.
+  const helpSubmenu = [
+    { label: t.guide, accelerator: "F1", click: () => actions.openGuide() },
+    { label: t.tour, click: () => actions.openTour() },
+    { label: t.shortcuts, accelerator: "Shift+F1", click: () => actions.openShortcuts() },
+    { type: "separator" },
+    { label: t.updates, click: () => actions.checkUpdates() },
+    { type: "separator" },
+    {
+      label: t.project,
+      click: () => shell.openExternal("https://github.com/ThinkFlowLab/OpenDirector"),
+    },
+  ];
+  if (!isMac) {
+    helpSubmenu.push({ type: "separator" }, { label: t.about, click: () => actions.about() });
+  }
+
+  template.push({ role: "help", label: t.help, submenu: helpSubmenu });
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }

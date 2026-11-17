@@ -5,6 +5,25 @@
  * arbitrary dialog arguments. Every handler rejects calls from any frame other
  * than the main frame of the application window.
  */
+const ALLOWED_LINK_HOSTS = new Set([
+  "github.com",
+  "thinkflowlab.github.io",
+  "opendirector.dev",
+  "www.opendirector.dev",
+]);
+
+function allowedLink(raw) {
+  try {
+    const url = new URL(String(raw));
+    if (url.protocol !== "https:") return null;
+    if (!ALLOWED_LINK_HOSTS.has(url.hostname)) return null;
+    if (url.hostname === "github.com" && !url.pathname.startsWith("/ThinkFlowLab/")) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function registerIpc({
   ipcMain,
   getWindow,
@@ -13,9 +32,17 @@ export function registerIpc({
   app,
   dialog,
   shell,
+  clipboard,
+  settings,
   locale = () => "en-US",
   requestQuit,
   restartHost,
+  chooseDataRoot,
+  checkForUpdates,
+  desktopInfo,
+  openDataFolder,
+  openLogs,
+  openExternal,
 }) {
   function trusted(event) {
     const window = getWindow();
@@ -32,6 +59,13 @@ export function registerIpc({
     });
   }
 
+  async function currentFacts() {
+    if (!host?.running) {
+      return { ok: false, hasModels: false, hasProjects: false, modelCount: 0, projectCount: 0 };
+    }
+    return host.facts();
+  }
+
   handle("od:boot", () => ({
     appVersion: app.getVersion(),
     locale: locale(),
@@ -40,20 +74,48 @@ export function registerIpc({
     dataRoot: paths.dataRoot,
     logsDir: paths.logsDir,
     host: { running: host.running, port: host.port || null },
-    /**
-     * Capabilities the shell knows it can perform. The renderer can hide an
-     * action instead of offering a broken button.
-     */
     features: { chooseDirectory: true, openDataFolder: true, restartHost: true },
   }));
 
+  handle("od:guide-state", async () => ({
+    settings: settings.get(),
+    facts: await currentFacts(),
+    locale: locale(),
+    appVersion: app.getVersion(),
+    coreVersion: desktopInfo?.().coreVersion ?? app.getVersion(),
+    platform: process.platform,
+    arch: process.arch,
+    paths: { dataRoot: paths.dataRoot, logsDir: paths.logsDir },
+  }));
+
+  /** Renderer-owned preferences (welcome, tour, tips). Values are sanitized. */
+  handle("od:guide-settings", (patch) => {
+    if (!patch || typeof patch !== "object") throw new Error("Invalid settings patch.");
+    return settings.patch(patch);
+  });
+
+  handle("od:guide-complete", (payload = {}) => {
+    const onboarding = settings.get().onboarding;
+    return settings.patch({
+      onboarding: {
+        ...onboarding,
+        completed: true,
+        tourDone: true,
+        skipped: payload?.skipped === true,
+        startedAt: onboarding.startedAt ?? new Date().toISOString(),
+      },
+    });
+  });
+
+  handle("od:desktop-info", () => desktopInfo());
+
   handle("od:open-logs", async () => {
-    await shell.openPath(paths.logsDir);
+    await openLogs();
     return true;
   });
 
   handle("od:open-data-folder", async () => {
-    await shell.openPath(paths.dataRoot);
+    await openDataFolder();
     return true;
   });
 
@@ -63,6 +125,23 @@ export function registerIpc({
       properties: ["openDirectory", "createDirectory"],
     });
     return result.canceled ? null : (result.filePaths[0] ?? null);
+  });
+
+  handle("od:choose-data-root", () => chooseDataRoot());
+
+  handle("od:copy-diagnostics", async () => {
+    const { formatDiagnostics } = await import("./guide/plan.js");
+    clipboard.writeText(formatDiagnostics(desktopInfo()));
+    return true;
+  });
+
+  handle("od:check-updates", (options) => checkForUpdates(options ?? {}));
+
+  handle("od:open-external", async (raw) => {
+    const url = allowedLink(raw);
+    if (!url) return false;
+    await openExternal(url);
+    return true;
   });
 
   handle("od:status", () => host.status());

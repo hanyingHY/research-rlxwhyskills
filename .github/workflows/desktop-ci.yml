@@ -1,0 +1,57 @@
+name: Desktop app
+
+on:
+  pull_request:
+    paths:
+      - "opendirector-desktop/**"
+      - ".github/workflows/desktop-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "opendirector-desktop/**"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: opendirector-desktop
+
+jobs:
+  contract:
+    name: ${{ matrix.os }} · node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-14]
+        node: ["22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: opendirector-desktop/package-lock.json
+      # No Electron binary is needed for the contract tests; skipping install
+      # scripts keeps CI fast and avoids the ~120 MB download.
+      - run: npm ci --ignore-scripts
+      - run: npm run build:preload
+      - run: npm test
+
+  guidance:
+    name: Guidance behaviour (jsdom)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: opendirector-desktop/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: node --test tests/guide.test.mjs tests/render.test.mjs tests/settings.test.mjs
+      - name: Fail on a stale preload bundle
+        run: |
+          npm run build:preload
+          node -e "const s=require('fs').statSync('dist/preload.cjs'); if (s.size < 20000) process.exit(1)"

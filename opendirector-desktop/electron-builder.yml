@@ -8,7 +8,10 @@ directories:
 
 files:
   - src/**
+  - dist/**
   - package.json
+  - node_modules/**
+  - "!node_modules/.bin"
   - "!**/*.map"
 
 # Per-target payload from scripts/prepare-runtime.mjs.
@@ -20,19 +23,28 @@ extraResources:
 asar: true
 npmRebuild: false
 
+# Names make the download page and the updater feed unambiguous.
+artifactName: OpenDirector-${version}-${os}-${arch}.${ext}
+
 mac:
   category: public.app-category.video
-  hardenedRuntime: true
-  gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
   target:
     - target: dmg
       arch: [arm64, x64]
     - target: zip
       arch: [arm64, x64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  minimumSystemVersion: "11.0"
+  icon: build/icon.png
+  # Signing/notarization use CSC_LINK and APPLE_ID when the repository secrets
+  # exist; unsigned builds still run but cannot auto-update.
+  notarize: false
 
 win:
+  icon: build/icon.ico
   target:
     - target: nsis
       arch: [x64, arm64]
@@ -41,12 +53,17 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: OpenDirector
   # Projects live outside the install directory; never delete them silently.
   deleteAppDataOnUninstall: false
 
 linux:
+  icon: build/icon.png
   category: AudioVideo
   maintainer: ThinkFlowLab
+  synopsis: Local creation canvas with a bundled runtime
   target:
     - target: AppImage
       arch: [x64, arm64]
@@ -55,5 +72,10 @@ linux:
     - target: rpm
       arch: [x64, arm64]
 
-# Enable when D5 (#367) defines hosting and channels.
-publish: null
+# `electron-builder --publish always` uploads installers and the latest*.yml
+# metadata to the GitHub release for the current tag (D5 #367).
+publish:
+  provider: github
+  owner: ThinkFlowLab
+  repo: OpenDirector
+  releaseType: draft
