@@ -1,0 +1,87 @@
+# Windows distribution for the OpenDirector desktop client (roadmap item D3).
+#
+# The installer ships three things: the Electron shell, the bundled Python runtime
+# that serves the real workspace, and the media tools. User data (projects, model
+# credentials, logs) is never part of a package; it stays in %APPDATA%\OpenDirector
+# so an update or an uninstall cannot destroy it.
+
+appId: com.thinkflowlab.opendirector
+productName: OpenDirector
+copyright: Copyright © 2026 ThinkFlowLab and the OpenDirector contributors
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - package.json
+  - "!**/*.map"
+  - "!**/*.ts"
+  - "!**/__pycache__"
+
+asar: true
+compression: maximum
+
+# The shell only needs what it compiles to; everything heavy is an extra resource
+# so it stays outside the asar archive and can be inspected by the user.
+extraResources:
+  - from: resources/python-runtime
+    to: python-runtime
+    filter:
+      - "**/*"
+  - from: resources/wheels
+    to: wheels
+    filter:
+      - "**/*"
+  - from: resources/bin
+    to: bin
+    filter:
+      - "**/*"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+    - target: zip
+      arch:
+        - x64
+  artifactName: "OpenDirector-${version}-${arch}.${ext}"
+  # Signing is env-driven: set CSC_LINK (and CSC_KEY_PASSWORD) to a PFX/base64
+  # certificate and electron-builder signs every executable without config changes.
+  signAndEditExecutable: true
+  legalTrademarks: OpenDirector is a trademark of its contributors.
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  # Projects and credentials must survive: never delete %APPDATA%\OpenDirector.
+  deleteAppDataOnUninstall: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  runAfterFinish: true
+  installerLanguages:
+    - en_US
+    - zh_CN
+  language: "1033"
+  uninstallDisplayName: "OpenDirector ${version}"
+  menuCategory: false
+
+portable:
+  artifactName: "OpenDirector-${version}-${arch}-portable.${ext}"
+  requestExecutionLevel: user
+
+# Publishing is handled by the release pipeline; local builds never publish.
+publish: null
+
+# macOS (D2) and Linux (D4) targets are added with their own distribution work.
+mac:
+  target: []
+linux:
+  target: []

@@ -1,0 +1,102 @@
+name: Desktop (Windows)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/desktop-windows.yml"
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/desktop-windows.yml"
+  workflow_dispatch:
+    inputs:
+      build_installers:
+        description: Build NSIS, portable and zip installers
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Typecheck, tests, packaging check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: apps/desktop
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: apps/desktop
+        run: npm run typecheck
+
+      - name: Tests
+        working-directory: apps/desktop
+        env:
+          # Windows runners expose "python", not "python3".
+          OPENDIRECTOR_TEST_PYTHON: python
+        run: npm test
+
+      - name: Package (unpacked, no signing)
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run dist:dir
+
+      - name: Verify the unpacked package
+        working-directory: apps/desktop
+        shell: pwsh
+        run: ./scripts/windows/verify-package.ps1
+
+  installers:
+    name: Windows installers
+    runs-on: windows-latest
+    needs: checks
+    if: github.event_name == 'workflow_dispatch' && inputs.build_installers
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build installers with a bundled runtime
+        working-directory: apps/desktop
+        shell: pwsh
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: ./scripts/windows/build-installer.ps1
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: opendirector-windows
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.zip
+          if-no-files-found: error

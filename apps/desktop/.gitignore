@@ -1,0 +1,11 @@
+# Build output and packaging artifacts.
+dist/
+release/
+resources/python-runtime/
+resources/wheels/
+resources/bin/
+resources/web/
+*.log
+node_modules/
+__pycache__/
+*.pyc
