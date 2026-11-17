@@ -1,0 +1,6 @@
+# Byte-compiled caches created when the launcher is imported by the tests.
+__pycache__/
+*.pyc
+
+# Staging tree produced by build.py; only the zip next to it is kept.
+packages/OpenDirector/
