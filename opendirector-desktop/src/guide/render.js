@@ -103,6 +103,11 @@ const STYLE = `
 .od-close{position:absolute;right:12px;top:12px;width:28px;height:28px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--od-muted);cursor:pointer;font-size:16px;line-height:1}
 .od-close:hover{background:var(--od-bg-soft);color:var(--od-text)}
 .od-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--od-bg);border:1px solid var(--od-border);color:var(--od-text);padding:9px 14px;border-radius:10px;box-shadow:var(--od-shadow);font-size:13px;animation:od-rise .2s ease-out}
+.od-mode-pill{position:fixed;top:10px;right:72px;z-index:2147482000;display:inline-flex;align-items:center;background:var(--od-bg);border:1px solid var(--od-border);border-radius:999px;padding:2px 3px;gap:2px;box-shadow:0 4px 16px rgba(0,0,0,.28);backdrop-filter:blur(10px);pointer-events:auto}
+.od-mode-btn{appearance:none;border:1px solid transparent;background:transparent;color:var(--od-muted);font:inherit;font-size:12px;font-weight:550;padding:4px 11px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s ease}
+.od-mode-btn:hover{color:var(--od-text);background:var(--od-bg-soft)}
+.od-mode-btn.on{background:var(--od-accent);color:var(--od-accent-text);border-color:transparent;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.od-mode-btn:focus-visible{outline:2px solid var(--od-accent);outline-offset:1px}
 .od-tip .od-title{font-size:15px}
 @keyframes od-fade{from{opacity:0}to{opacity:1}}
 @keyframes od-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -147,6 +152,9 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
   let locale = initialLocale;
   let facts = state?.facts ?? {};
   let settings = state?.settings ?? {};
+  let mode = settings?.workspace?.mode ?? "simple";
+  let modePill = null;
+  let onKeydownMode = null;
   let mounted = null;
   let layer = null;
   let layerCleanup = null;
@@ -158,6 +166,113 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
 
   const msgs = () => MESSAGES[locale] ?? MESSAGES["en-US"];
   const t = (value) => text(locale, value);
+
+  function ensureModeStyle() {
+    if (document.getElementById("od-mode-style")) return;
+    const style = document.createElement("style");
+    style.id = "od-mode-style";
+    style.textContent = `
+      [data-od-mode="simple"] #canvas-assistant {
+        width: min(540px, 44vw) !important;
+        max-width: 90vw !important;
+        box-shadow: -8px 0 32px rgba(0,0,0,.42) !important;
+        border-left: 1px solid rgba(245, 181, 74, 0.28) !important;
+        transition: width .2s ease-out !important;
+      }
+      [data-od-mode="simple"] .cw-rail {
+        opacity: 0.72;
+        transition: opacity .2s ease;
+      }
+      [data-od-mode="simple"] .cw-rail:hover {
+        opacity: 1;
+      }
+    `;
+    document.head?.append(style);
+  }
+
+  function applyModeUI(nextMode) {
+    ensureModeStyle();
+    document.documentElement.setAttribute("data-od-mode", nextMode);
+    if (nextMode === "simple") {
+      document.body?.classList?.add("od-mode-simple");
+      document.body?.classList?.remove("od-mode-pro");
+      const assistant = document.getElementById("canvas-assistant");
+      if (assistant) {
+        assistant.removeAttribute("hidden");
+        assistant.setAttribute("data-od-expanded", "true");
+      }
+      const chatBtn = document.querySelector(".cw-chat-button");
+      if (chatBtn && assistant?.getAttribute("hidden") !== null) {
+        chatBtn.click();
+      }
+    } else {
+      document.body?.classList?.remove("od-mode-simple");
+      document.body?.classList?.add("od-mode-pro");
+      const assistant = document.getElementById("canvas-assistant");
+      assistant?.removeAttribute("data-od-expanded");
+    }
+    updateModePill();
+  }
+
+  function updateModePill() {
+    if (!modePill) return;
+    const isZh = locale.startsWith("zh");
+    modePill.innerHTML = `
+      <button class="od-mode-btn ${mode === "simple" ? "on" : ""}" data-mode="simple" title="${isZh ? "简洁模式：Agent 优先对话创作" : "Simple mode: prompt-first agent creation"}">
+        <span>✦</span><span>${isZh ? "简洁模式" : "Simple"}</span>
+      </button>
+      <button class="od-mode-btn ${mode === "pro" ? "on" : ""}" data-mode="pro" title="${isZh ? "专业模式：全功能节点画布" : "Pro mode: full node canvas"}">
+        <span>⚡</span><span>${isZh ? "专业模式" : "Pro Studio"}</span>
+      </button>
+    `;
+    modePill.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", () => setMode(btn.dataset.mode));
+    });
+  }
+
+  function renderModePill() {
+    if (modePill && modePill.isConnected) return modePill;
+    const host = ensureHost();
+    modePill = el("div", "od-mode-pill");
+    modePill.setAttribute("role", "group");
+    modePill.setAttribute("aria-label", "Workspace Mode");
+    host.append(modePill);
+    updateModePill();
+    return modePill;
+  }
+
+  function setMode(newMode, { persist: shouldPersist = true } = {}) {
+    const next = newMode === "pro" ? "pro" : "simple";
+    mode = next;
+    applyModeUI(mode);
+    if (shouldPersist) {
+      persist({ workspace: { mode } });
+    }
+  }
+
+  function toggleMode() {
+    setMode(mode === "simple" ? "pro" : "simple");
+    const isZh = locale.startsWith("zh");
+    toast(
+      mode === "simple"
+        ? (isZh ? "已切换至简洁模式 (Agent 优先)" : "Switched to Simple Mode (Agent first)")
+        : (isZh ? "已切换至专业模式 (画布编辑)" : "Switched to Pro Mode (Canvas studio)"),
+    );
+  }
+
+  function initMode() {
+    applyModeUI(mode);
+    renderModePill();
+    if (!onKeydownMode) {
+      onKeydownMode = (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "m") {
+          event.preventDefault();
+          toggleMode();
+        }
+      };
+      window.addEventListener("keydown", onKeydownMode, true);
+    }
+  }
 
   function theme() {
     return document.documentElement.dataset.theme === "light" ? LIGHT : DARK;
@@ -616,7 +731,7 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
       const index = HELP_SECTIONS.findIndex((group) => group.id === currentSection);
       if (index > 0) {
         const target = scroll.querySelectorAll(".od-section")[index];
-        target?.scrollIntoView({ block: "start" });
+        target?.scrollIntoView?.({ block: "start" });
       }
     }
     input.addEventListener("input", () => render(input.value));
@@ -663,6 +778,16 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
         await api.openDataFolder();
         return;
       }
+      if (action === "openPlugins") {
+        clearLayer();
+        await (api.plugins?.openFolder?.() ?? api.openPluginsFolder?.() ?? api.openDataFolder?.());
+        return;
+      }
+      if (action === "toggleMode") {
+        clearLayer();
+        toggleMode();
+        return;
+      }
       if (action === "openLogs") {
         await api.openLogs();
         return;
@@ -691,6 +816,7 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
     if (shouldPersist) {
       persist({ onboarding: { ...settings.onboarding, language: normalized } });
     }
+    updateModePill();
     // Re-render the topmost surface in place.
     if (layer) {
       if (layer.querySelector(".od-drawer")) openHelp();
@@ -742,6 +868,16 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
     get locale() {
       return locale;
     },
+    get mode() {
+      return mode;
+    },
+    getMode() {
+      return mode;
+    },
+    setMode,
+    toggleMode,
+    initMode,
+    renderModePill,
     showWelcome,
     startTour,
     openHelp,
@@ -759,6 +895,12 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
       observer?.disconnect();
       observer = null;
       if (layer) clearLayer();
+      if (onKeydownMode) {
+        window.removeEventListener("keydown", onKeydownMode, true);
+        onKeydownMode = null;
+      }
+      modePill?.remove?.();
+      modePill = null;
     },
   };
 }

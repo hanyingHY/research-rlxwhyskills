@@ -17,6 +17,7 @@ after(() => rmSync(temporary, { recursive: true, force: true }));
 test("defaults are a complete, frozen shape", () => {
   const value = sanitizeSettings({});
   assert.equal(value.schemaVersion, 1);
+  assert.equal(value.workspace.mode, "simple");
   assert.equal(value.onboarding.completed, false);
   assert.equal(value.updates.autoCheck, true);
   assert.equal(value.storage.dataRoot, null);
@@ -39,11 +40,13 @@ test("merge is deep for objects and replaces arrays", () => {
 
 test("sanitize clamps window bounds and rejects unusable data roots", () => {
   const value = sanitizeSettings({
+    workspace: { mode: "pro" },
     window: { width: 10, height: 99999, x: 3.6, y: "nope", maximized: true },
     storage: { dataRoot: "relative/path" },
     onboarding: { language: "fr-FR", completed: "yes" },
     tips: { dismissed: ["a", "a", 7, "b"], seen: null },
   });
+  assert.equal(value.workspace.mode, "pro");
   assert.equal(value.window.width, 960);
   assert.equal(value.window.height, 10000);
   assert.equal(value.window.x, 4);
@@ -54,6 +57,8 @@ test("sanitize clamps window bounds and rejects unusable data roots", () => {
   assert.equal(value.onboarding.completed, false);
   assert.deepEqual(value.tips.dismissed, ["a", "b"]);
   assert.deepEqual(value.tips.seen, []);
+
+  assert.equal(sanitizeSettings({ workspace: { mode: "invalid" } }).workspace.mode, "simple");
 });
 
 test("sanitize accepts absolute POSIX and Windows data roots", () => {

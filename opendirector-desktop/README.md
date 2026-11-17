@@ -148,8 +148,8 @@ git tag v0.1.4 && git push origin v0.1.4      # 版本必须与 package.json 相
 ## 本机验证（Linux x86_64）
 
 ```
-npm test                              54/54 通过（含 7 个 jsdom 引导界面测试）
-node scripts/build-preload.mjs        dist/preload.cjs 57 KiB
+npm test                              56/56 通过（含 9 个 jsdom 引导界面、双模式切换与创造模式测试）
+node scripts/build-preload.mjs        dist/preload.cjs 66 KiB
 node scripts/verify-runtime.mjs       PASS dynamic port, token, health, status, graceful shutdown
 ```
 
@@ -157,11 +157,13 @@ node scripts/verify-runtime.mjs       PASS dynamic port, token, health, status, 
 MP4 导出、macOS/Windows 安装体验、签名与自动更新的端到端升级。发布前请在一台干净机器上跑
 [RFC 验收清单](#验收对照)。
 
-## 验收对照（RFC #362）
+## 验收对照（RFC #362 与扩展特性）
 
 | 验收项 | 状态 | 实现/缺口 |
 | --- | --- | --- |
 | 干净环境安装 → 建工程 → Agent → 编辑 → 导出 → 重开 | 代码就绪 | 需在带显示器的真机跑通并记录 |
+| 双模式设计（简洁模式 vs 专业模式） | 已实现 | Cursor/即梦式双模式；简洁模式放大 Agent 对话框，专业模式保留全功能画布，顶部胶囊与 Ctrl/Cmd+M 无缝切换 |
+| 创造模式（自定义插件与 DeepSeek Harness） | 已实现 | 插件存放于 `~/.opendirector/skills`，提供一键打开目录、脚手架生成与 F1 指引中心集成 |
 | 更新与卸载不丢数据 | 已实现 | 数据在 `~/.opendirector`，NSIS `deleteAppDataOnUninstall: false` |
 | 中英双语 | 已实现 | 界面跟随上游；引导/帮助中心自带双语并跟随切换 |
 | 声明系统/架构/格式 | 已实现 | 下载页 + 产物命名 + 本文档矩阵 |

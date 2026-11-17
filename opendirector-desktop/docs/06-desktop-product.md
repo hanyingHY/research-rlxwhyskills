@@ -308,3 +308,43 @@ F1 / 菜单「重播使用引导」可从任意状态重新进入导览（不改
 2. **Windows / Linux 关于对话框**：在主菜单「帮助 → 关于 OpenDirector」中弹出模态框，直观显示版本号、运行环境诊断信息与日志目录快捷入口；
 3. **F1 桌面指引中心（所有平台）**：在预加载层（Preload）渲染的 F1 帮助中心内，专门收录「**开源许可与第三方声明 / Licenses and third-party notices**」条目，向用户明确说明 Apache 2.0、GPL、SIL OFL 与 MPL 2.0 的边界与仓库内 `LICENSE`、`NOTICE` 的获取方式。
 
+## 11. 双模式设计（简洁模式 vs 专业模式）
+
+借鉴 Cursor（Composer/Agent 对话优先 vs IDE 编辑器全功能）与即梦（灵感生图 vs 专业画板）的设计哲学，OpenDirector 桌面版实现了**简洁模式**与**专业模式**的双模式工作流：
+
+### 11.1 模式定位
+
+| 模式 | 核心理念 | 界面表现 | 适用场景 |
+| --- | --- | --- | --- |
+| **简洁模式 (Simple / Agent Mode)** | 对话优先，提示词驱动生成，渐进式披露 | 默认自动展开并拓宽右侧 Agent 对话面板（`#canvas-assistant`），主视觉聚焦于创作对话；左侧轨道（`.cw-rail`）弱化收敛，画布保持清爽背景 | 初次上手、灵感发散、自然语言全流程编排、快速生成素材与粗剪 |
+| **专业模式 (Pro / Studio Canvas)** | 细节微调，无限节点连接，精准参数调校 | 保留左侧完整工具栏（Text、Image、Video、Audio、Subject、Timeline），全屏无限画布节点连接，支持复杂的属性检查与精准时间线编排 | 专业视觉创作者、手动连线控制、精确关键帧调整、复杂分镜微调 |
+
+### 11.2 模式切换与持久化
+
+- **顶部悬浮切换胶囊 (`.od-mode-pill`)**：在画布顶部右侧无侵入注入双段式切换按钮 `[ ✦ 简洁模式 | ⚡ 专业模式 ]`，带高斯模糊与暗色主题；
+- **键盘快捷键**：全局支持 `Command/Ctrl + M`，单键毫秒级无缝往返切换；
+- **原生应用菜单**：主菜单「视图」中包含「切换工作区模式 (Ctrl/Cmd+M)」、「简洁模式 (Agent 对话)」与「专业模式 (全功能画布)」；
+- **设置持久化**：用户选择的模式自动原子化写入 `desktop-settings.json` 的 `workspace.mode`（`"simple" | "pro"`），下次打开应用自动还原。
+
+## 12. 创造模式（类比 DeepSeek Harness 自定义插件体系）
+
+类比 DeepSeek Harness 与 OpenCode MCP 协议，桌面版引入“创造模式”，允许高阶用户与开发者创造自己的插件、自定义技能与自动化工作流：
+
+### 12.1 插件存储与上游自动发现
+
+- **统一插件目录**：位于应用数据目录下的 `~/.opendirector/skills/`（与上游 `opendirector.agent.skills` 自动发现机制路径无缝对齐）；
+- **标准插件结构**：
+  ```
+  ~/.opendirector/skills/<plugin-name>/
+  ├── skill.yaml (或 plugin.json)   # 插件元数据、输入参数 schema、执行引擎
+  └── run.py (或 run.sh / index.js)  # 插件执行体或 MCP Server 入口
+  ```
+- **执行契约**：上游 OpenCode 引擎在启动时通过原生加载器自动扫描 `~/.opendirector/skills`，并在助手对话上下文（`@` 引用）中动态提供该工具调用。
+
+### 12.2 桌面端能力与引导支持
+
+- **一键直达**：主菜单「文件 → 打开自定义插件目录」与 F1 帮助中心「创造模式 (插件与技能)」均提供直达入口；
+- **脚手架生成**：提供 `od:create-plugin-template` IPC 通道，可一键在插件目录下生成标准 `skill.yaml` 与 Python 样例代码；
+- **安全隔离**：插件作为本地独立脚本由 Agent 框架调度运行，桌面壳严控渲染层 IPC，杜绝任意第三方代码在 Chromium 渲染进程执行。
+
+

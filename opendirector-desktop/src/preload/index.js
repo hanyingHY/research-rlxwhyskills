@@ -33,6 +33,16 @@ const bridge = {
     updateSettings: (patch) => invoke("od:guide-settings", patch),
     completeOnboarding: (payload) => invoke("od:guide-complete", payload),
   },
+  workspace: {
+    getMode: () => invoke("od:get-mode"),
+    setMode: (mode) => invoke("od:set-mode", mode),
+    toggleMode: () => invoke("od:toggle-mode"),
+  },
+  plugins: {
+    openFolder: () => invoke("od:open-plugins-folder"),
+    createTemplate: (name) => invoke("od:create-plugin-template", name),
+    list: () => invoke("od:list-plugins"),
+  },
   desktopInfo: () => invoke("od:desktop-info"),
   openDataFolder: () => invoke("od:open-data-folder"),
   openLogs: () => invoke("od:open-logs"),
@@ -101,12 +111,17 @@ async function boot() {
     if (command === "help") guide.openHelp();
     else if (command === "tour") guide.startTour({ force: true });
     else if (command === "shortcuts") guide.openHelp({ section: "desktop" });
+    else if (command === "plugins") guide.openHelp({ section: "creator" });
     else if (command === "close") guide.close();
+    else if (command === "mode:toggle") guide.toggleMode();
+    else if (command === "mode:simple") guide.setMode("simple");
+    else if (command === "mode:pro") guide.setMode("pro");
   });
 
   const ready = await waitForApp();
   guide.observe();
   guide.watchLocale();
+  guide.initMode();
   if (!ready) {
     // The app never painted (host failure surfaces in its own error page).
     // Stay out of the way rather than stacking dialogs on a broken shell.

@@ -385,6 +385,30 @@ export const HELP_SECTIONS = [
     ],
   },
   {
+    id: "creator",
+    title: pair("创造模式 (插件与技能)", "Creator Mode (Plugins & Skills)"),
+    items: [
+      {
+        title: pair("自定义技能与 DeepSeek Harness 插件", "Custom skills and DeepSeek Harness plugins"),
+        body: pair(
+          "类比 DeepSeek Harness 与 OpenCode 插件标准，你可以在项目数据目录的 skills/ 文件夹下定义自己的插件。每个插件包含声明文件 skill.yaml 或 plugin.json 以及执行脚本，助手会自动识别并在创作中调用。",
+          "Analogous to DeepSeek Harness and OpenCode plugin standards, you can create custom plugins in the skills/ folder inside your data directory. Each plugin includes a skill.yaml manifest and an executable script, which the assistant discovers automatically.",
+        ),
+        action: { type: "openPlugins", label: pair("打开插件目录", "Open plugins folder") },
+        keywords: "plugin skill harness deepseek 插件 技能 创造",
+      },
+      {
+        title: pair("双模式工作流切换 (简洁 / 专业)", "Dual-mode workflow switching (Simple / Pro)"),
+        body: pair(
+          "简洁模式默认放大右侧 Agent 对话框，通过自然语言表达需求并渐进式披露高级功能；专业模式保留完整左侧菜单与无限节点画布，供微调连线与时间线细节。按 Ctrl/Cmd+M 可随时无缝切换。",
+          "Simple mode enlarges the right Agent panel for prompt-first creation with progressive disclosure; Pro mode preserves the full left rail and infinite canvas nodes for manual fine-tuning. Press Ctrl/Cmd+M to switch seamlessly.",
+        ),
+        action: { type: "toggleMode", label: pair("切换工作区模式", "Toggle mode") },
+        keywords: "mode simple pro agent ide 模式 简洁 专业",
+      },
+    ],
+  },
+  {
     id: "faq",
     title: pair("常见问题", "Troubleshooting"),
     items: [

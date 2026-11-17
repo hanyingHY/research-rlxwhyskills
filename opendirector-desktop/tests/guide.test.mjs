@@ -130,7 +130,14 @@ test("help search matches both languages and returns grouped results", () => {
 });
 
 test("help items declare known actions and non-empty copy", () => {
-  const known = new Set(["openModels", "openData", "openLogs", "checkUpdates"]);
+  const known = new Set([
+    "openModels",
+    "openData",
+    "openLogs",
+    "checkUpdates",
+    "openPlugins",
+    "toggleMode",
+  ]);
   for (const section of HELP_SECTIONS) {
     assert.ok(text("zh-CN", section.title) && text("en-US", section.title));
     assert.ok(section.items.length > 0);

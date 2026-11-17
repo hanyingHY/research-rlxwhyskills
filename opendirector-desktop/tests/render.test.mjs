@@ -63,6 +63,8 @@ function setup({ locale = "zh-CN", facts = { hasModels: false, hasProjects: fals
     },
     copyDiagnostics: async () => calls.push({ type: "diagnostics" }),
     openDataFolder: async () => calls.push({ type: "data" }),
+    openPluginsFolder: async () => calls.push({ type: "plugins" }),
+    plugins: { openFolder: async () => calls.push({ type: "plugins" }) },
     openLogs: async () => calls.push({ type: "logs" }),
     checkForUpdates: async () => calls.push({ type: "updates" }),
   };
@@ -221,4 +223,45 @@ test("guide follows a language switch made in the app", () => {
   document.documentElement.dataset.locale = "en-US";
   guide.setLocale("en-US");
   assert.match(query(".od-drawer").textContent, /Desktop guide/);
+});
+
+test("dual mode switcher renders, toggles simple and pro modes, and expands assistant", () => {
+  const { guide, document, overlay, calls, window } = setup();
+  guide.initMode();
+
+  const pill = overlay().querySelector(".od-mode-pill");
+  assert.ok(pill, "mode pill rendered in shadow root");
+
+  const buttons = pill.querySelectorAll(".od-mode-btn");
+  assert.equal(buttons.length, 2);
+  assert.equal(guide.getMode(), "simple");
+  assert.equal(document.documentElement.getAttribute("data-od-mode"), "simple");
+  assert.equal(document.getElementById("canvas-assistant").getAttribute("hidden"), null);
+
+  // Click Pro Mode
+  buttons[1].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  assert.equal(guide.getMode(), "pro");
+  assert.equal(document.documentElement.getAttribute("data-od-mode"), "pro");
+  assert.equal(lastPatch(calls).workspace.mode, "pro");
+
+  // Keyboard shortcut Ctrl+M toggles back to Simple Mode
+  window.dispatchEvent(
+    new window.KeyboardEvent("keydown", { key: "m", ctrlKey: true, bubbles: true }),
+  );
+  assert.equal(guide.getMode(), "simple");
+  assert.equal(document.documentElement.getAttribute("data-od-mode"), "simple");
+  assert.equal(lastPatch(calls).workspace.mode, "simple");
+});
+
+test("creator mode section in help centre triggers plugin folder action", () => {
+  const { guide, query, click, calls } = setup();
+  guide.openHelp({ section: "creator" });
+  assert.match(query(".od-drawer").textContent, /创造模式/);
+
+  click('[data-action="openPlugins"]');
+  assert.ok(calls.some((call) => call.type === "plugins"));
+
+  guide.openHelp({ section: "creator" });
+  click('[data-action="toggleMode"]');
+  assert.equal(guide.getMode(), "pro");
 });

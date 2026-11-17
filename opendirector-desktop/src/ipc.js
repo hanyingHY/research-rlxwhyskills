@@ -5,6 +5,9 @@
  * arbitrary dialog arguments. Every handler rejects calls from any frame other
  * than the main frame of the application window.
  */
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
 const ALLOWED_LINK_HOSTS = new Set([
   "github.com",
   "thinkflowlab.github.io",
@@ -149,4 +152,61 @@ export function registerIpc({
   handle("od:restart-host", () => restartHost());
 
   handle("od:quit", () => requestQuit());
+
+  handle("od:get-mode", () => settings.get().workspace?.mode ?? "simple");
+
+  handle("od:set-mode", (raw) => {
+    const mode = raw === "pro" ? "pro" : "simple";
+    return settings.patch({ workspace: { mode } });
+  });
+
+  handle("od:toggle-mode", () => {
+    const current = settings.get().workspace?.mode ?? "simple";
+    const next = current === "simple" ? "pro" : "simple";
+    settings.patch({ workspace: { mode: next } });
+    return next;
+  });
+
+  handle("od:open-plugins-folder", async () => {
+    const skillsDir = join(paths.dataRoot, "skills");
+    mkdirSync(skillsDir, { recursive: true });
+    await shell.openPath(skillsDir);
+    return skillsDir;
+  });
+
+  handle("od:create-plugin-template", async (pluginName) => {
+    const safeName = String(pluginName || "custom-skill").replace(/[^a-zA-Z0-9_-]/g, "-");
+    const pluginDir = join(paths.dataRoot, "skills", safeName);
+    mkdirSync(pluginDir, { recursive: true });
+    const manifestPath = join(pluginDir, "skill.yaml");
+    if (!existsSync(manifestPath)) {
+      writeFileSync(
+        manifestPath,
+        `name: ${safeName}\ndescription: Custom agent skill created with OpenDirector Desktop\nengine: opencode\nentrypoint: run.py\n`,
+        "utf8",
+      );
+    }
+    const scriptPath = join(pluginDir, "run.py");
+    if (!existsSync(scriptPath)) {
+      writeFileSync(
+        scriptPath,
+        `#!/usr/bin/env python3\n"""Sample OpenDirector custom skill / DeepSeek Harness plugin."""\nimport sys\n\ndef main():\n    print("Hello from custom skill ${safeName}!")\n\nif __name__ == "__main__":\n    main()\n`,
+        "utf8",
+      );
+    }
+    await shell.openPath(pluginDir);
+    return pluginDir;
+  });
+
+  handle("od:list-plugins", () => {
+    const skillsDir = join(paths.dataRoot, "skills");
+    if (!existsSync(skillsDir)) return [];
+    try {
+      return readdirSync(skillsDir, { withFileTypes: true })
+        .filter((d) => d.isDirectory())
+        .map((d) => ({ name: d.name, path: join(skillsDir, d.name) }));
+    } catch {
+      return [];
+    }
+  });
 }

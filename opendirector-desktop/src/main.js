@@ -499,6 +499,14 @@ async function bootstrap() {
       openGuide: () => sendGuideCommand("help"),
       openTour: () => sendGuideCommand("tour"),
       openShortcuts: () => sendGuideCommand("shortcuts"),
+      openCreatorGuide: () => sendGuideCommand("plugins"),
+      toggleMode: () => sendGuideCommand("mode:toggle"),
+      setMode: (mode) => sendGuideCommand(`mode:${mode}`),
+      openPluginsFolder: () => {
+        const skillsDir = join(paths.dataRoot, "skills");
+        mkdirSync(skillsDir, { recursive: true });
+        void shell.openPath(skillsDir);
+      },
       checkUpdates: () => void checkForUpdates({ interactive: true }),
       changeDataRoot: () => void chooseDataRoot(),
       about: async () => {

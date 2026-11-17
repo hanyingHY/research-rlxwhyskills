@@ -16,6 +16,9 @@ export const SETTINGS_VERSION = 1;
 
 export const DEFAULT_SETTINGS = Object.freeze({
   schemaVersion: SETTINGS_VERSION,
+  workspace: {
+    mode: "simple", // "simple" (简洁模式/Agent优先) | "pro" (专业模式/全功能画布)
+  },
   onboarding: {
     completed: false,
     tourDone: false,
@@ -53,6 +56,7 @@ function stringArray(value, limit = 200) {
 /** Clamp anything that came from disk or the renderer before it is trusted. */
 export function sanitizeSettings(value) {
   const input = isPlainObject(value) ? value : {};
+  const workspace = isPlainObject(input.workspace) ? input.workspace : {};
   const onboarding = isPlainObject(input.onboarding) ? input.onboarding : {};
   const tips = isPlainObject(input.tips) ? input.tips : {};
   const windowValue = isPlainObject(input.window) ? input.window : {};
@@ -64,6 +68,9 @@ export function sanitizeSettings(value) {
 
   return {
     schemaVersion: SETTINGS_VERSION,
+    workspace: {
+      mode: workspace.mode === "pro" ? "pro" : "simple",
+    },
     onboarding: {
       completed: onboarding.completed === true,
       tourDone: onboarding.tourDone === true,
