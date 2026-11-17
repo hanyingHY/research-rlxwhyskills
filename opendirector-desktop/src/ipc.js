@@ -5,7 +5,7 @@
  * arbitrary dialog arguments. Every handler rejects calls from any frame other
  * than the main frame of the application window.
  */
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ALLOWED_LINK_HOSTS = new Set([
@@ -46,6 +46,7 @@ export function registerIpc({
   openDataFolder,
   openLogs,
   openExternal,
+  onModeChanged,
 }) {
   function trusted(event) {
     const window = getWindow();
@@ -55,7 +56,9 @@ export function registerIpc({
     return Boolean(frame) && frame === window.webContents.mainFrame;
   }
 
+  const registered = [];
   function handle(channel, callback) {
+    registered.push(channel);
     ipcMain.handle(channel, async (event, ...args) => {
       if (!trusted(event)) throw new Error("Rejected IPC call from an untrusted frame.");
       return callback(...args);
@@ -157,56 +160,104 @@ export function registerIpc({
 
   handle("od:set-mode", (raw) => {
     const mode = raw === "pro" ? "pro" : "simple";
-    return settings.patch({ workspace: { mode } });
+    settings.patch({ workspace: { mode } });
+    onModeChanged?.(mode);
+    return mode;
   });
 
   handle("od:toggle-mode", () => {
     const current = settings.get().workspace?.mode ?? "simple";
     const next = current === "simple" ? "pro" : "simple";
     settings.patch({ workspace: { mode: next } });
+    onModeChanged?.(next);
     return next;
   });
 
   handle("od:open-plugins-folder", async () => {
-    const skillsDir = join(paths.dataRoot, "skills");
+    const root = paths?.dataRoot || paths?.userData || process.cwd();
+    const skillsDir = join(root, "skills");
     mkdirSync(skillsDir, { recursive: true });
     await shell.openPath(skillsDir);
     return skillsDir;
   });
 
-  handle("od:create-plugin-template", async (pluginName) => {
-    const safeName = String(pluginName || "custom-skill").replace(/[^a-zA-Z0-9_-]/g, "-");
-    const pluginDir = join(paths.dataRoot, "skills", safeName);
+  handle("od:create-plugin-template", async (payload) => {
+    const options = typeof payload === "string" ? { name: payload } : (payload || {});
+    const type = options.type === "mcp" ? "mcp" : "python";
+    const safeName = String(options.name || (type === "mcp" ? "custom-mcp-server" : "custom-skill")).replace(/[^a-zA-Z0-9_-]/g, "-");
+    const root = paths?.dataRoot || paths?.userData || process.cwd();
+    const pluginDir = join(root, "skills", safeName);
     mkdirSync(pluginDir, { recursive: true });
     const manifestPath = join(pluginDir, "skill.yaml");
     if (!existsSync(manifestPath)) {
-      writeFileSync(
-        manifestPath,
-        `name: ${safeName}\ndescription: Custom agent skill created with OpenDirector Desktop\nengine: opencode\nentrypoint: run.py\n`,
-        "utf8",
-      );
+      if (type === "mcp") {
+        writeFileSync(
+          manifestPath,
+          `name: ${safeName}\ndescription: Custom MCP server plugin for DeepSeek Harness and OpenCode\nengine: deepseek\nprotocol: mcp-v1\nentrypoint: server.py\n`,
+          "utf8",
+        );
+      } else {
+        writeFileSync(
+          manifestPath,
+          `name: ${safeName}\ndescription: Custom agent skill created with OpenDirector Desktop\nengine: opencode\nentrypoint: run.py\n`,
+          "utf8",
+        );
+      }
     }
-    const scriptPath = join(pluginDir, "run.py");
+    const scriptPath = join(pluginDir, type === "mcp" ? "server.py" : "run.py");
     if (!existsSync(scriptPath)) {
-      writeFileSync(
-        scriptPath,
-        `#!/usr/bin/env python3\n"""Sample OpenDirector custom skill / DeepSeek Harness plugin."""\nimport sys\n\ndef main():\n    print("Hello from custom skill ${safeName}!")\n\nif __name__ == "__main__":\n    main()\n`,
-        "utf8",
-      );
+      if (type === "mcp") {
+        writeFileSync(
+          scriptPath,
+          `#!/usr/bin/env python3\n"""Sample DeepSeek Harness MCP JSON-RPC server skeleton."""\nimport json\nimport sys\n\ndef main():\n    for line in sys.stdin:\n        try:\n            req = json.loads(line)\n        except Exception:\n            continue\n        method = req.get("method")\n        identity = req.get("id")\n        if method == "initialize":\n            res = {"jsonrpc": "2.0", "id": identity, "result": {"protocolVersion": 1, "serverInfo": {"name": "${safeName}", "version": "0.1.0"}}}\n            sys.stdout.write(json.dumps(res) + "\\n")\n            sys.stdout.flush()\n\nif __name__ == "__main__":\n    main()\n`,
+          "utf8",
+        );
+      } else {
+        writeFileSync(
+          scriptPath,
+          `#!/usr/bin/env python3\n"""Sample OpenDirector custom skill / DeepSeek Harness plugin."""\nimport sys\n\ndef main():\n    print("Hello from custom skill ${safeName}!")\n\nif __name__ == "__main__":\n    main()\n`,
+          "utf8",
+        );
+      }
     }
     await shell.openPath(pluginDir);
-    return pluginDir;
+    return { name: safeName, path: pluginDir, type };
   });
 
   handle("od:list-plugins", () => {
-    const skillsDir = join(paths.dataRoot, "skills");
+    const root = paths?.dataRoot || paths?.userData || process.cwd();
+    const skillsDir = join(root, "skills");
     if (!existsSync(skillsDir)) return [];
     try {
       return readdirSync(skillsDir, { withFileTypes: true })
         .filter((d) => d.isDirectory())
-        .map((d) => ({ name: d.name, path: join(skillsDir, d.name) }));
+        .map((d) => {
+          const pluginPath = join(skillsDir, d.name);
+          const manifestPath = join(pluginPath, "skill.yaml");
+          const hasManifest = existsSync(manifestPath);
+          let description = "";
+          let engine = "opencode";
+          if (hasManifest) {
+            try {
+              const content = readFileSync(manifestPath, "utf8");
+              const descMatch = content.match(/description:\s*(.+)/);
+              if (descMatch) description = descMatch[1].trim();
+              const engineMatch = content.match(/engine:\s*(.+)/);
+              if (engineMatch) engine = engineMatch[1].trim();
+            } catch {}
+          }
+          return { name: d.name, path: pluginPath, description, engine, hasManifest };
+        });
     } catch {
       return [];
     }
   });
+
+  return () => {
+    for (const channel of registered) {
+      try {
+        ipcMain.removeHandler?.(channel);
+      } catch {}
+    }
+  };
 }

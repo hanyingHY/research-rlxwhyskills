@@ -108,6 +108,20 @@ const STYLE = `
 .od-mode-btn:hover{color:var(--od-text);background:var(--od-bg-soft)}
 .od-mode-btn.on{background:var(--od-accent);color:var(--od-accent-text);border-color:transparent;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 .od-mode-btn:focus-visible{outline:2px solid var(--od-accent);outline-offset:1px}
+.od-starters-wrap{padding:12px 14px;border-bottom:1px solid var(--od-border);background:var(--od-bg)}
+.od-starters{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.od-starter-card{appearance:none;border:1px solid var(--od-border);background:var(--od-bg-soft);color:var(--od-text);border-radius:10px;padding:8px 10px;text-align:left;cursor:pointer;font:inherit;font-size:12px;display:flex;align-items:center;gap:8px;transition:all .14s ease}
+.od-starter-card:hover{background:var(--od-accent-soft);border-color:var(--od-accent);transform:translateY(-1px)}
+.od-starter-icon{font-size:15px;flex:0 0 auto}
+.od-starter-title{flex:1;font-weight:550;line-height:1.25}
+.od-plugins-box{margin-top:12px;display:grid;gap:8px}
+.od-plugin-card{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--od-bg-soft);border:1px solid var(--od-border);border-radius:10px}
+.od-plugin-meta{display:grid;gap:2px}
+.od-plugin-name{font-size:12.5px;font-weight:600;color:var(--od-text)}
+.od-plugin-desc{font-size:11px;color:var(--od-muted)}
+.od-plugin-badge{display:inline-block;padding:1px 5px;border-radius:4px;background:var(--od-accent-soft);color:var(--od-accent);font-size:10px;font-weight:600;text-transform:uppercase}
+.od-scaffold-row{display:flex;gap:8px;margin-top:4px}
+.od-scaffold-row .od-btn{flex:1;font-size:11.5px;padding:5px 8px;justify-content:center}
 .od-tip .od-title{font-size:15px}
 @keyframes od-fade{from{opacity:0}to{opacity:1}}
 @keyframes od-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -132,13 +146,26 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+const FALLBACK_MAP = {
+  ".cw-project-heading": [".cw-project-heading", "[data-guide='heading']", ".cw-topbar h1", ".cw-topbar > div:first-child"],
+  ".cw-topbar": [".cw-topbar", "[data-guide='topbar']", "header", "nav[role='banner']"],
+  "#canvas-assistant": ["#canvas-assistant", "[data-guide='assistant']", "aside[aria-label*='assistant']", "aside"],
+  ".cw-rail": [".cw-rail", "[data-guide='rail']", "nav.cw-rail", "[role='toolbar']", "nav"],
+  ".cw-chat-button": [".cw-chat-button", "button[aria-controls='canvas-assistant']", "[data-guide='chat']", "button.cw-chat"],
+  ".cw-top-actions": [".cw-top-actions", "[data-guide='export']", ".cw-topbar button:last-child"],
+  ".cw-empty button": [".cw-empty button", ".cw-settings-control button", "button[data-act='settings']"],
+};
+
 function firstVisible(selectors) {
-  for (const selector of selectors ?? []) {
-    try {
-      const node = document.querySelector(selector);
-      if (node && node.getBoundingClientRect().width > 0) return node;
-    } catch {
-      /* invalid selector in a future app version: ignore */
+  for (const item of selectors ?? []) {
+    const list = FALLBACK_MAP[item] ?? [item];
+    for (const selector of list) {
+      try {
+        const node = document.querySelector(selector);
+        if (node && node.getBoundingClientRect().width > 0) return node;
+      } catch {
+        /* invalid selector in a future app version: ignore */
+      }
     }
   }
   return null;
@@ -190,6 +217,62 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
     document.head?.append(style);
   }
 
+  const STARTERS = [
+    { icon: "🎥", zh: "10s 电影级预告片，多机位运镜", en: "10s Cinematic Teaser, multi-camera shots" },
+    { icon: "🎙️", zh: "播客解说配音，带动态音画同步", en: "Podcast narration with dynamic audio-visual sync" },
+    { icon: "🖼️", zh: "角色多视角一致性四视图生成", en: "Consistent character 4-angle views" },
+    { icon: "✨", zh: "赛博朋克雨夜都市航拍特写", en: "Cyberpunk rainy metropolis aerial close-up" },
+  ];
+
+  function renderStarters() {
+    const assistant = document.getElementById("canvas-assistant");
+    if (!assistant) return;
+    let container = assistant.querySelector(".od-starters-wrap");
+    if (!container) {
+      container = el("div", "od-starters-wrap");
+      assistant.prepend(container);
+    }
+    const isZh = locale.startsWith("zh");
+    container.innerHTML = `
+      <div class="od-starters" role="region" aria-label="Prompt Starters">
+        <div class="od-eyebrow" style="grid-column: 1/-1; margin-bottom: 2px;">
+          <span class="od-dot"></span>${escapeHtml(isZh ? "创作灵感速选 (点击填入)" : "Inspiration Starters (click to insert)")}
+        </div>
+        ${STARTERS.map(
+          (s) => `
+          <button class="od-starter-card" type="button" data-prompt="${escapeHtml(isZh ? s.zh : s.en)}">
+            <span class="od-starter-icon">${s.icon}</span>
+            <span class="od-starter-title">${escapeHtml(isZh ? s.zh : s.en)}</span>
+          </button>
+        `,
+        ).join("")}
+      </div>
+    `;
+    container.querySelectorAll(".od-starter-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const prompt = card.dataset.prompt;
+        const input =
+          assistant.querySelector("textarea, input[type='text'], [contenteditable='true']") ||
+          document.querySelector("textarea");
+        if (input) {
+          if ("value" in input) {
+            input.value = prompt;
+            try {
+              const Evt = input.ownerDocument?.defaultView?.Event || Event;
+              input.dispatchEvent(new Evt("input", { bubbles: true }));
+            } catch {}
+          } else {
+            input.textContent = prompt;
+          }
+          input.focus?.();
+          toast(isZh ? "已填入对话框" : "Inserted into chat");
+        } else {
+          toast(prompt);
+        }
+      });
+    });
+  }
+
   function applyModeUI(nextMode) {
     ensureModeStyle();
     document.documentElement.setAttribute("data-od-mode", nextMode);
@@ -200,6 +283,7 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
       if (assistant) {
         assistant.removeAttribute("hidden");
         assistant.setAttribute("data-od-expanded", "true");
+        renderStarters();
       }
       const chatBtn = document.querySelector(".cw-chat-button");
       if (chatBtn && assistant?.getAttribute("hidden") !== null) {
@@ -210,6 +294,7 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
       document.body?.classList?.add("od-mode-pro");
       const assistant = document.getElementById("canvas-assistant");
       assistant?.removeAttribute("data-od-expanded");
+      assistant?.querySelector(".od-starters-wrap")?.remove();
     }
     updateModePill();
   }
@@ -696,6 +781,59 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
     const input = search.querySelector("input");
     let currentSection = section ?? null;
 
+    async function loadPluginsList(targetNode) {
+      if (!targetNode || !api.plugins?.list) return;
+      try {
+        const list = await api.plugins.list();
+        const isZh = locale.startsWith("zh");
+        targetNode.innerHTML = `
+          <div class="od-plugins-box">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span class="od-eyebrow"><span class="od-dot"></span>${escapeHtml(isZh ? `已安装自定义插件 (${list.length})` : `Installed Plugins (${list.length})`)}</span>
+              <button class="od-btn od-ghost" style="font-size:11px;padding:2px 6px;" data-act="open-plugins-dir">${escapeHtml(isZh ? "打开目录 ↗" : "Open Folder ↗")}</button>
+            </div>
+            ${
+              list.length
+                ? list
+                    .map(
+                      (p) => `
+              <div class="od-plugin-card">
+                <div class="od-plugin-meta">
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span class="od-plugin-name">${escapeHtml(p.name)}</span>
+                    <span class="od-plugin-badge">${escapeHtml(p.engine ?? "opencode")}</span>
+                  </div>
+                  <div class="od-plugin-desc">${escapeHtml(p.description || (isZh ? "自定义 Agent 技能扩展" : "Custom Agent skill extension"))}</div>
+                </div>
+              </div>`,
+                    )
+                    .join("")
+                : `<div class="od-empty" style="padding:10px 0;font-size:12px;">${escapeHtml(isZh ? "尚未创建自定义插件" : "No custom plugins yet")}</div>`
+            }
+            <div class="od-scaffold-row">
+              <button class="od-btn" data-act="scaffold-python">${escapeHtml(isZh ? "+ 新建 Python 技能模版" : "+ New Python Skill")}</button>
+              <button class="od-btn" data-act="scaffold-mcp">${escapeHtml(isZh ? "+ 新建 MCP 插件模版" : "+ New MCP Server")}</button>
+            </div>
+          </div>
+        `;
+        targetNode.querySelector('[data-act="open-plugins-dir"]')?.addEventListener("click", () => {
+          api.plugins?.openFolder?.() ?? api.openPluginsFolder?.() ?? api.openDataFolder?.();
+        });
+        targetNode.querySelector('[data-act="scaffold-python"]')?.addEventListener("click", async () => {
+          await api.plugins?.createTemplate?.({ name: "my-python-skill", type: "python" });
+          toast(isZh ? "已生成 Python 技能模版" : "Created Python skill template");
+          loadPluginsList(targetNode);
+        });
+        targetNode.querySelector('[data-act="scaffold-mcp"]')?.addEventListener("click", async () => {
+          await api.plugins?.createTemplate?.({ name: "my-mcp-server", type: "mcp" });
+          toast(isZh ? "已生成 MCP 插件模版" : "Created MCP server template");
+          loadPluginsList(targetNode);
+        });
+      } catch {
+        /* ignore listing failure */
+      }
+    }
+
     function render(query = "") {
       const sections = searchHelp(query, { locale, sections: HELP_SECTIONS });
       if (!sections.length) {
@@ -705,7 +843,7 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
       scroll.innerHTML = sections
         .map(
           (group) => `
-          <div class="od-section">
+          <div class="od-section" data-section="${group.id}">
             <h3>${escapeHtml(t(group.title))}</h3>
             ${group.items
               .map(
@@ -721,9 +859,13 @@ export function createGuide({ api, state, locale: initialLocale, systemLocale, o
               </div>`,
               )
               .join("")}
+            ${group.id === "creator" ? '<div class="od-plugins-container"></div>' : ""}
           </div>`,
         )
         .join("");
+
+      const creatorBox = scroll.querySelector('.od-section[data-section="creator"] .od-plugins-container');
+      if (creatorBox) void loadPluginsList(creatorBox);
     }
 
     render();

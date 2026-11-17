@@ -55,7 +55,7 @@ export function createMainWindow({
 }
 
 /** Downloads go through a native save dialog; no silent write to disk. */
-export function configureSession(session, { downloadsDir }) {
+export function configureSession(session, { downloadsDir, onDownloadComplete }) {
   session.setPermissionRequestHandler((_contents, permission, callback) => {
     callback(permission === "clipboard-sanitized-write");
   });
@@ -66,6 +66,16 @@ export function configureSession(session, { downloadsDir }) {
   session.on("will-download", (_event, item) => {
     item.setSaveDialogOptions({
       defaultPath: join(downloadsDir, item.getFilename()),
+    });
+    item.once("done", (_e, state) => {
+      if (state === "completed" && onDownloadComplete) {
+        try {
+          const savedPath = item.getSavePath ? item.getSavePath() : join(downloadsDir, item.getFilename());
+          onDownloadComplete(savedPath);
+        } catch {
+          /* ignore notification error */
+        }
+      }
     });
   });
 }

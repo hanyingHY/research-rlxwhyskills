@@ -37,7 +37,7 @@ function setup({ locale = "zh-CN", facts = { hasModels: false, hasProjects: fals
       <nav class="cw-rail"><button class="cw-rail-button">Text</button></nav>
       <div class="cw-empty"><button id="configure">Configure</button><button id="example">Example</button></div>
       <button class="cw-chat-button" aria-controls="canvas-assistant">Chat</button>
-      <aside id="canvas-assistant" hidden></aside>
+      <aside id="canvas-assistant" hidden><textarea id="assistant-input"></textarea></aside>
       <div class="cw-settings-control"><button id="settings">Settings</button></div>
     </body></html>`,
     { url: "https://od.test/", pretendToBeVisual: true },
@@ -64,7 +64,14 @@ function setup({ locale = "zh-CN", facts = { hasModels: false, hasProjects: fals
     copyDiagnostics: async () => calls.push({ type: "diagnostics" }),
     openDataFolder: async () => calls.push({ type: "data" }),
     openPluginsFolder: async () => calls.push({ type: "plugins" }),
-    plugins: { openFolder: async () => calls.push({ type: "plugins" }) },
+    plugins: {
+      openFolder: async () => calls.push({ type: "plugins" }),
+      list: async () => [{ name: "demo-skill", description: "Demo custom skill", engine: "opencode" }],
+      createTemplate: async (opts) => {
+        calls.push({ type: "create-template", opts });
+        return { name: opts?.name ?? "custom", path: "/tmp/fake" };
+      },
+    },
     openLogs: async () => calls.push({ type: "logs" }),
     checkForUpdates: async () => calls.push({ type: "updates" }),
   };
@@ -238,6 +245,11 @@ test("dual mode switcher renders, toggles simple and pro modes, and expands assi
   assert.equal(document.documentElement.getAttribute("data-od-mode"), "simple");
   assert.equal(document.getElementById("canvas-assistant").getAttribute("hidden"), null);
 
+  const starter = document.querySelector(".od-starter-card");
+  assert.ok(starter, "prompt starter rendered in simple mode");
+  starter.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  assert.ok(document.querySelector("#assistant-input").value.length > 0);
+
   // Click Pro Mode
   buttons[1].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   assert.equal(guide.getMode(), "pro");
@@ -253,8 +265,8 @@ test("dual mode switcher renders, toggles simple and pro modes, and expands assi
   assert.equal(lastPatch(calls).workspace.mode, "simple");
 });
 
-test("creator mode section in help centre triggers plugin folder action", () => {
-  const { guide, query, click, calls } = setup();
+test("creator mode section in help centre triggers plugin folder action", async () => {
+  const { guide, query, click, calls, window } = setup();
   guide.openHelp({ section: "creator" });
   assert.match(query(".od-drawer").textContent, /创造模式/);
 
@@ -262,6 +274,14 @@ test("creator mode section in help centre triggers plugin folder action", () => 
   assert.ok(calls.some((call) => call.type === "plugins"));
 
   guide.openHelp({ section: "creator" });
+  // wait for async plugins listing to render
+  await new Promise((r) => setTimeout(r, 50));
+  const scaffoldBtn = query('[data-act="scaffold-python"]');
+  if (scaffoldBtn) {
+    scaffoldBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+    assert.ok(calls.some((call) => call.type === "create-template"));
+  }
+
   click('[data-action="toggleMode"]');
   assert.equal(guide.getMode(), "pro");
 });

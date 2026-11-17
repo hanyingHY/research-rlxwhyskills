@@ -51,6 +51,20 @@
 >    not auto-updated. D4/D5 should either promise AppImage updates only, or budget for a
 >    repository-based channel.
 >
+> 7. **Dual-Mode UX (Prompt-First Agent vs Pro Studio Canvas).** Drawing inspiration
+>    from Cursor and 即梦 (Jimeng), casual users and pro directors have fundamentally
+>    different interface needs. The desktop shell introduces a first-class Dual-Mode
+>    architecture: Simple Mode expands `#canvas-assistant` as the primary conversational
+>    driver with prompt starter cards, while Pro Mode retains the infinite node canvas
+>    and timeline editing. Users switch seamlessly via top floating pill, `Ctrl/Cmd+M`,
+>    or native menu, with state atomically persisted in `desktop-settings.json`.
+>
+> 8. **Creator Mode (DeepSeek Harness & OpenCode Custom Skills).** For extensible
+>    workflows, user-defined agent skills live in `~/.opendirector/skills/<name>/` with
+>    declarative `skill.yaml` manifests and executable Python scripts or MCP JSON-RPC
+>    servers. The desktop bridge provides native folder access, scaffolding generators
+>    (`od:create-plugin-template`), and F1 Help Center plugin discovery.
+>
 > Two smaller notes:
 >
 > - Keep the desktop/shell version identical to the bundled OpenDirector version (one
@@ -72,5 +86,8 @@
 - 方向与选型认可：Electron 是导出能力决定的，不是偏好。
 - D1 前必须先冻结 6 件事：鉴权、稳定 origin、任务状态、数据根、运行时体积/许可证、
   Linux 更新范围。
+- 架构与 UX 演进提议：
+  - 双模式设计（Simple vs Pro）：Cursor / 即梦式体验，小白对话优先，专业节点全控，顶部胶囊与快捷键无缝切换。
+  - 创造模式（Creator Skills）：兼容 DeepSeek Harness / OpenCode 技能规范，内置 Python 与 MCP 服务模版脚手架与目录管理。
 - 补充两点：版本号与发布单元统一；HarmonyOS 独立。
 - 已有一个可跑的骨架验证了前三点，可作为 D1 起点。

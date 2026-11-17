@@ -64,7 +64,7 @@ export function menuStrings(locale) {
   return locale.startsWith("zh") ? STRINGS["zh-CN"] : STRINGS["en-US"];
 }
 
-export function buildMenu({ Menu, app, shell, locale = "en-US", actions }) {
+export function buildMenu({ Menu, app, shell, locale = "en-US", mode = "simple", actions }) {
   const t = menuStrings(locale);
   const isMac = process.platform === "darwin";
 
@@ -122,8 +122,8 @@ export function buildMenu({ Menu, app, shell, locale = "en-US", actions }) {
       { role: "toggleDevTools", label: t.devTools },
       { type: "separator" },
       { label: t.toggleMode, accelerator: "CommandOrControl+M", click: () => actions.toggleMode?.() },
-      { label: t.simpleMode, click: () => actions.setMode?.("simple") },
-      { label: t.proMode, click: () => actions.setMode?.("pro") },
+      { label: t.simpleMode, type: "radio", checked: mode === "simple", click: () => actions.setMode?.("simple") },
+      { label: t.proMode, type: "radio", checked: mode === "pro", click: () => actions.setMode?.("pro") },
       { type: "separator" },
       { role: "resetZoom" },
       { role: "zoomIn" },

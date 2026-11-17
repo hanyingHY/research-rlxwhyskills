@@ -14,7 +14,7 @@
     "build:preload": "node scripts/build-preload.mjs",
     "start": "npm run build:preload && electron .",
     "dev": "npm run build:preload && OD_DEV=1 electron .",
-    "test": "node --test tests/auth.test.mjs tests/config.test.mjs tests/host.test.mjs tests/protocol.test.mjs tests/settings.test.mjs tests/updater.test.mjs tests/guide.test.mjs tests/render.test.mjs tests/preload.test.mjs",
+    "test": "node --test tests/auth.test.mjs tests/config.test.mjs tests/host.test.mjs tests/protocol.test.mjs tests/settings.test.mjs tests/updater.test.mjs tests/guide.test.mjs tests/render.test.mjs tests/preload.test.mjs tests/ipc.test.mjs",
     "prepare:source": "node scripts/prepare-source.mjs",
     "prepare:runtime": "node scripts/prepare-runtime.mjs",
     "fetch:python": "node scripts/fetch-python.mjs",

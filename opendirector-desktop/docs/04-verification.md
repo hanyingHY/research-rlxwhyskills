@@ -144,14 +144,15 @@ npm start
 产品化之后测试与验证范围扩大，以下结果取代本文早先的 25/25：
 
 ```
-npm test                     56/56 通过
+npm test                     59/59 通过
   · auth/config/host/protocol  25（阶段一核心协议与凭据）
   · settings                    6（设置校验、原子写、双模式持久化、损坏恢复、原型污染防护）
   · guide                       9（导览/条件提示/创造模式与双模式指引/诊断信息/双语归一）
-  · render                      9（jsdom 真实渲染：欢迎页、导览、Esc、跳过、提示、帮助抽屉、语言切换、双模式胶囊切换、创造模式插件跳转）
+  · render                      9（jsdom 真实渲染：欢迎页、导览、提示、帮助抽屉、灵感卡片、双模式胶囊切换、创造模式脚手架生成）
   · updater                     5（更新能力判定、通道 URL 拼接、错误友好翻译）
   · preload                     2（产物仅依赖 electron、双语与入口齐全）
-node scripts/build-preload.mjs   dist/preload.cjs 66 KiB
+  · ipc                         3（IPC 隔离调用拦截、双模式 get/set/toggle 同步、创造模式 Python/MCP 脚手架生成与插件列表读取）
+node scripts/build-preload.mjs   dist/preload.cjs 73.5 KiB
 node scripts/verify-runtime.mjs  PASS dynamic port, token, health, status, graceful shutdown
 ```
 

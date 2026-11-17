@@ -2,7 +2,7 @@
  * Electron main process: single instance, od:// proxy, Host lifecycle, updates.
  */
 import { mkdirSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { release as osRelease } from "node:os";
 import {
@@ -13,6 +13,7 @@ import {
   ipcMain,
   Menu,
   net,
+  Notification,
   protocol,
   shell,
 } from "electron";
@@ -449,7 +450,27 @@ async function bootstrap() {
     preloadPath: PRELOAD,
     bounds: settings.get().window,
   });
-  configureSession(window.webContents.session, { downloadsDir: app.getPath("downloads") });
+  configureSession(window.webContents.session, {
+    downloadsDir: app.getPath("downloads"),
+    onDownloadComplete: (filePath) => {
+      try {
+        if (Notification.isSupported()) {
+          const filename = basename(filePath);
+          const isZh = locale.startsWith("zh");
+          const note = new Notification({
+            title: "OpenDirector",
+            body: isZh
+              ? `导出已完成：${filename}（点击在文件夹中显示）`
+              : `Export completed: ${filename} (click to reveal in folder)`,
+          });
+          note.on("click", () => void shell.showItemInFolder(filePath));
+          note.show();
+        }
+      } catch {
+        /* ignore notification errors */
+      }
+    },
+  });
   trackWindowState(window);
 
   window.on("close", (event) => {
@@ -465,6 +486,59 @@ async function bootstrap() {
   window.on("closed", () => {
     window = null;
   });
+
+  function refreshMenu(currentMode = settings.get().workspace?.mode ?? "simple") {
+    buildMenu({
+      Menu,
+      app,
+      shell,
+      locale,
+      mode: currentMode,
+      actions: {
+        requestQuit: () => void requestQuit(),
+        openDataFolder: () => void shell.openPath(paths.dataRoot),
+        openLogs: () => void shell.openPath(paths.logsDir),
+        openGuide: () => sendGuideCommand("help"),
+        openTour: () => sendGuideCommand("tour"),
+        openShortcuts: () => sendGuideCommand("shortcuts"),
+        openCreatorGuide: () => sendGuideCommand("plugins"),
+        toggleMode: () => {
+          const next = (settings.get().workspace?.mode ?? "simple") === "simple" ? "pro" : "simple";
+          settings.patch({ workspace: { mode: next } });
+          refreshMenu(next);
+          sendGuideCommand(`mode:${next}`);
+        },
+        setMode: (targetMode) => {
+          settings.patch({ workspace: { mode: targetMode } });
+          refreshMenu(targetMode);
+          sendGuideCommand(`mode:${targetMode}`);
+        },
+        openPluginsFolder: () => {
+          const skillsDir = join(paths.dataRoot, "skills");
+          mkdirSync(skillsDir, { recursive: true });
+          void shell.openPath(skillsDir);
+        },
+        checkUpdates: () => void checkForUpdates({ interactive: true }),
+        changeDataRoot: () => void chooseDataRoot(),
+        about: async () => {
+          const info = desktopInfo();
+          const answer = await dialog.showMessageBox(dialogParent(), {
+            type: "info",
+            title: t("aboutTitle"),
+            message: `OpenDirector ${info.appVersion}`,
+            detail: [
+              t("aboutBody"),
+              "",
+              formatDiagnostics(info),
+            ].join("\n"),
+            buttons: [t("openLogs")],
+            noLink: true,
+          });
+          if (answer.response === 0) await shell.openPath(paths.logsDir);
+        },
+      },
+    });
+  }
 
   registerIpc({
     ipcMain,
@@ -485,48 +559,10 @@ async function bootstrap() {
     openDataFolder: () => shell.openPath(paths.dataRoot),
     openLogs: () => shell.openPath(paths.logsDir),
     openExternal: (url) => shell.openExternal(url),
+    onModeChanged: (newMode) => refreshMenu(newMode),
   });
 
-  buildMenu({
-    Menu,
-    app,
-    shell,
-    locale,
-    actions: {
-      requestQuit: () => void requestQuit(),
-      openDataFolder: () => void shell.openPath(paths.dataRoot),
-      openLogs: () => void shell.openPath(paths.logsDir),
-      openGuide: () => sendGuideCommand("help"),
-      openTour: () => sendGuideCommand("tour"),
-      openShortcuts: () => sendGuideCommand("shortcuts"),
-      openCreatorGuide: () => sendGuideCommand("plugins"),
-      toggleMode: () => sendGuideCommand("mode:toggle"),
-      setMode: (mode) => sendGuideCommand(`mode:${mode}`),
-      openPluginsFolder: () => {
-        const skillsDir = join(paths.dataRoot, "skills");
-        mkdirSync(skillsDir, { recursive: true });
-        void shell.openPath(skillsDir);
-      },
-      checkUpdates: () => void checkForUpdates({ interactive: true }),
-      changeDataRoot: () => void chooseDataRoot(),
-      about: async () => {
-        const info = desktopInfo();
-        const answer = await dialog.showMessageBox(dialogParent(), {
-          type: "info",
-          title: t("aboutTitle"),
-          message: `OpenDirector ${info.appVersion}`,
-          detail: [
-            t("aboutBody"),
-            "",
-            formatDiagnostics(info),
-          ].join("\n"),
-          buttons: [t("openLogs")],
-          noLink: true,
-        });
-        if (answer.response === 0) await shell.openPath(paths.logsDir);
-      },
-    },
-  });
+  refreshMenu();
 
   await window.loadURL(`${APP_ORIGIN}/__desktop/start`);
 

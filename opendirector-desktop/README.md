@@ -148,8 +148,8 @@ git tag v0.1.4 && git push origin v0.1.4      # 版本必须与 package.json 相
 ## 本机验证（Linux x86_64）
 
 ```
-npm test                              56/56 通过（含 9 个 jsdom 引导界面、双模式切换与创造模式测试）
-node scripts/build-preload.mjs        dist/preload.cjs 66 KiB
+npm test                              59/59 通过（含 jsdom 引导界面、双模式切换、创造模式插件脚手架与 IPC 隔离测试）
+node scripts/build-preload.mjs        dist/preload.cjs 73.5 KiB
 node scripts/verify-runtime.mjs       PASS dynamic port, token, health, status, graceful shutdown
 ```
 
