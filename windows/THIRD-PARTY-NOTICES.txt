@@ -1,0 +1,36 @@
+OpenDirector Windows package
+Copyright (c) 2026 ThinkFlowLab and the OpenDirector contributors
+
+The OpenDirector application is licensed under the Apache License, Version 2.0
+(see the LICENSE file in the OpenDirector repository).
+
+This package installs the following third-party components on the user's machine
+during setup. Nothing is installed system-wide: everything is placed either next to
+the application (resources) or in the user's %APPDATA%\OpenDirector (data).
+
+  CPython (embeddable package)     PSF License Agreement
+      https://www.python.org/          downloaded from python.org during setup
+
+  OpenDirector (Python package)    Apache License 2.0
+      https://github.com/ThinkFlowLab/OpenDirector
+      Includes its own dependencies (FastAPI, uvicorn, Pillow, pillow-heif,
+      httpx, pydantic, typer, filelock, fonttools, PyYAML, python-multipart,
+      anyio, starlette) and the bundled web workspace.
+
+  FFmpeg / ffprobe (static build)  GPL v3 (gyan.dev "essentials" build)
+      https://www.gyan.dev/ffmpeg/builds/
+      The default download is a GPL build because it contains the libx264 encoder
+      that MP4 export needs. Set --ffmpeg-url to an LGPL build of your choice if
+      your distribution requires it, and update this notice accordingly.
+
+  psutil                           BSD 3-Clause
+      https://github.com/giampaolo/psutil   used to supervise the local service
+
+  Microsoft Edge / Google Chrome   proprietary
+      Not distributed here. The application window is opened with the browser
+      already installed on the user's computer (Edge or Chrome, in --app mode).
+      The workspace itself is the same web application a browser would open.
+
+The web workspace bundles third-party JavaScript (React, three.js, @xyflow/react,
+mediabunny, and others). Their licences are listed in the NOTICE file of the
+OpenDirector repository.
